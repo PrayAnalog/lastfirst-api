@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: yt-reverse-playlist
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - lastfirst.app
+      secretName: lastfirst-app-tls
+  rules:
+    - host: lastfirst.app
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: yt-reverse-playlist
+                port:
+                  number: 80

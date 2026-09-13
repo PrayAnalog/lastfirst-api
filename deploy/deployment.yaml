@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yt-reverse-playlist
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: yt-reverse-playlist
+  template:
+    metadata:
+      labels:
+        app: yt-reverse-playlist
+    spec:
+      containers:
+        - name: backend
+          image: registry.digitalocean.com/lastfirst/backend:v1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: YT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: yt-api-key
+                  key: YT_API_KEY
