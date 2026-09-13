@@ -17,6 +17,10 @@ var (
 
 const ReverseTitlePrefix = "[역순] "
 
+// PageSize is how many items playlistItems.list returns per page; each page
+// costs one YouTube API quota unit.
+const PageSize = 50
+
 type Item struct {
 	VideoID     string     `json:"videoId"`
 	Title       string     `json:"title"`
@@ -24,10 +28,10 @@ type Item struct {
 }
 
 type Playlist struct {
-	ID           string `json:"id"`
-	Title        string `json:"title"`
-	ChannelTitle string `json:"channelTitle"`
-	Items        []Item `json:"items"`
+	ID           string
+	Title        string
+	ChannelTitle string
+	ItemCount    int64
 }
 
 type Client struct {
@@ -42,31 +46,39 @@ func New(ctx context.Context, apiKey string) (*Client, error) {
 	return &Client{svc: svc}, nil
 }
 
-func (c *Client) FetchPlaylist(ctx context.Context, id string) (*Playlist, error) {
-	res, err := c.svc.Playlists.List([]string{"snippet"}).Id(id).Context(ctx).Do()
+// FetchPlaylistMeta costs a single quota unit and reports the playlist's
+// item count, so the caller can work out the cost of FetchPlaylistItems
+// before spending it.
+func (c *Client) FetchPlaylistMeta(ctx context.Context, id string) (*Playlist, error) {
+	res, err := c.svc.Playlists.List([]string{"snippet", "contentDetails"}).Id(id).Context(ctx).Do()
 	if err != nil {
 		return nil, apiErr(err)
 	}
 	if len(res.Items) == 0 {
 		return nil, ErrNotFound
 	}
-	p := &Playlist{ID: id, Title: res.Items[0].Snippet.Title, ChannelTitle: res.Items[0].Snippet.ChannelTitle}
+	it := res.Items[0]
+	return &Playlist{ID: id, Title: it.Snippet.Title, ChannelTitle: it.Snippet.ChannelTitle, ItemCount: it.ContentDetails.ItemCount}, nil
+}
 
-	call := c.svc.PlaylistItems.List([]string{"snippet", "contentDetails"}).PlaylistId(id).MaxResults(50)
-	err = call.Pages(ctx, func(page *yt.PlaylistItemListResponse) error {
+// FetchPlaylistItems costs one quota unit per PageSize items.
+func (c *Client) FetchPlaylistItems(ctx context.Context, id string) ([]Item, error) {
+	var items []Item
+	call := c.svc.PlaylistItems.List([]string{"snippet", "contentDetails"}).PlaylistId(id).MaxResults(PageSize)
+	err := call.Pages(ctx, func(page *yt.PlaylistItemListResponse) error {
 		for _, it := range page.Items {
 			item := Item{VideoID: it.ContentDetails.VideoId, Title: it.Snippet.Title}
 			if t, err := time.Parse(time.RFC3339, it.ContentDetails.VideoPublishedAt); err == nil {
 				item.PublishedAt = &t
 			}
-			p.Items = append(p.Items, item)
+			items = append(items, item)
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, apiErr(err)
 	}
-	return p, nil
+	return items, nil
 }
 
 func ReverseTitle(sourceTitle string) string {
