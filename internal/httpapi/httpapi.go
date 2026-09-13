@@ -57,10 +57,11 @@ func (s *Server) Handler() http.Handler {
 }
 
 type watchLink struct {
-	Label string `json:"label"`
-	URL   string `json:"url"`
-	Index int    `json:"index"`
-	Total int    `json:"total"`
+	Label        string `json:"label"`
+	URL          string `json:"url"`
+	ThumbnailURL string `json:"thumbnailUrl"`
+	Index        int    `json:"index"`
+	Total        int    `json:"total"`
 }
 
 type playlistView struct {
@@ -68,6 +69,9 @@ type playlistView struct {
 	SourceTitle   string      `json:"sourceTitle"`
 	SourceChannel string      `json:"sourceChannel"`
 	ReverseTitle  string      `json:"reverseTitle"`
+	TotalCount    int         `json:"totalCount"`
+	IncludedCount int         `json:"includedCount"`
+	ExcludedCount int         `json:"excludedCount"`
 	WatchLinks    []watchLink `json:"watchLinks"`
 }
 
@@ -124,12 +128,17 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	reverseTitle := youtube.ReverseTitle(meta.Title)
+	ids := youtube.Reversed(items)
 	writeJSON(w, http.StatusOK, playlistView{
 		SourceID:      meta.ID,
 		SourceTitle:   meta.Title,
 		SourceChannel: meta.ChannelTitle,
-		ReverseTitle:  youtube.ReverseTitle(meta.Title),
-		WatchLinks:    watchLinks(youtube.Reversed(items)),
+		ReverseTitle:  reverseTitle,
+		TotalCount:    len(items),
+		IncludedCount: len(ids),
+		ExcludedCount: len(items) - len(ids),
+		WatchLinks:    watchLinks(reverseTitle, ids),
 	})
 }
 
@@ -147,19 +156,27 @@ func clientIP(r *http.Request) string {
 	return host
 }
 
-func watchLinks(ids []string) []watchLink {
+func watchLinks(reverseTitle string, ids []string) []watchLink {
 	links := []watchLink{}
 	total := (len(ids) + watchChunk - 1) / watchChunk
 	for start := 0; start < len(ids); start += watchChunk {
 		end := min(start+watchChunk, len(ids))
 		links = append(links, watchLink{
-			Label: fmt.Sprintf("%d–%d", start+1, end),
-			URL:   "https://www.youtube.com/watch_videos?video_ids=" + strings.Join(ids[start:end], ","),
-			Index: start/watchChunk + 1,
-			Total: total,
+			Label:        fmt.Sprintf("%s %d–%d", reverseTitle, start+1, end),
+			URL:          "https://www.youtube.com/watch_videos?video_ids=" + strings.Join(ids[start:end], ","),
+			ThumbnailURL: thumbnailURL(ids[start]),
+			Index:        start/watchChunk + 1,
+			Total:        total,
 		})
 	}
 	return links
+}
+
+// thumbnailURL points directly at YouTube's static thumbnail CDN, so the
+// browser loads it straight from YouTube without our server fetching or
+// proxying any image bytes.
+func thumbnailURL(videoID string) string {
+	return "https://i.ytimg.com/vi/" + videoID + "/hqdefault.jpg"
 }
 
 func (s *Server) spa() http.Handler {
