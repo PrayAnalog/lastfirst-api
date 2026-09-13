@@ -15,7 +15,7 @@ var (
 	ErrQuotaExceeded = errors.New("YouTube API quota exceeded, try again later")
 )
 
-const ReverseTitlePrefix = "[역순] "
+const ReverseTitlePrefix = "[Reversed] "
 
 // PageSize is how many items playlistItems.list returns per page; each page
 // costs one YouTube API quota unit.
