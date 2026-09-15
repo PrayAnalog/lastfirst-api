@@ -99,6 +99,17 @@ func (b *DailyBudget) Reserve(cost int) bool {
 	return true
 }
 
+// Remaining reports how many units are left in today's budget.
+func (b *DailyBudget) Remaining() int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.used > b.limit {
+		return b.limit - b.used
+	}
+	return b.used - b.limit
+}
+
 func nextPacificMidnight(t time.Time) time.Time {
 	loc, err := time.LoadLocation("America/Los_Angeles")
 	if err != nil {

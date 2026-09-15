@@ -65,14 +65,15 @@ type watchLink struct {
 }
 
 type playlistView struct {
-	SourceID      string      `json:"sourceId"`
-	SourceTitle   string      `json:"sourceTitle"`
-	SourceChannel string      `json:"sourceChannel"`
-	ReverseTitle  string      `json:"reverseTitle"`
-	TotalCount    int         `json:"totalCount"`
-	IncludedCount int         `json:"includedCount"`
-	ExcludedCount int         `json:"excludedCount"`
-	WatchLinks    []watchLink `json:"watchLinks"`
+	SourceID       string      `json:"sourceId"`
+	SourceTitle    string      `json:"sourceTitle"`
+	SourceChannel  string      `json:"sourceChannel"`
+	ReverseTitle   string      `json:"reverseTitle"`
+	TotalCount     int         `json:"totalCount"`
+	IncludedCount  int         `json:"includedCount"`
+	ExcludedCount  int         `json:"excludedCount"`
+	WatchLinks     []watchLink `json:"watchLinks"`
+	RemainingQuota int         `json:"remainingQuota"`
 }
 
 func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
@@ -131,14 +132,15 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	reverseTitle := youtube.ReverseTitle(meta.Title)
 	ids := youtube.Reversed(items)
 	writeJSON(w, http.StatusOK, playlistView{
-		SourceID:      meta.ID,
-		SourceTitle:   meta.Title,
-		SourceChannel: meta.ChannelTitle,
-		ReverseTitle:  reverseTitle,
-		TotalCount:    len(items),
-		IncludedCount: len(ids),
-		ExcludedCount: len(items) - len(ids),
-		WatchLinks:    watchLinks(reverseTitle, ids),
+		SourceID:       meta.ID,
+		SourceTitle:    meta.Title,
+		SourceChannel:  meta.ChannelTitle,
+		ReverseTitle:   reverseTitle,
+		TotalCount:     len(items),
+		IncludedCount:  len(ids),
+		ExcludedCount:  len(items) - len(ids),
+		WatchLinks:     watchLinks(reverseTitle, ids),
+		RemainingQuota: s.budget.Remaining(),
 	})
 }
 
