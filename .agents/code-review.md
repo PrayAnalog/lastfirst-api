@@ -16,5 +16,5 @@ exposure, and public contracts. Verify that proposed tests would fail for the
 defect they claim to prevent. Mark optional polish as non-blocking.
 
 If a review request is technically unsound, respond with repository evidence
-and trade-offs. Apply valid findings, rerun affected checks, and avoid unrelated
-refactors.
+and trade-offs. Report valid findings; apply fixes and rerun checks only when the
+user explicitly requests implementation.

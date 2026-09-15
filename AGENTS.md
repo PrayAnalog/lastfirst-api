@@ -25,8 +25,8 @@ semantics, and deployment assumptions unless the request changes them.
 - Never commit or push directly to `main`. Use a dedicated branch; Codex branches
   use `codex/<topic>`.
 - Preserve unrelated working-tree changes and keep each diff focused.
-- Commit completed changes, push the branch, and open a PR with `gh pr create`.
-  Wait for review; merge only when the user explicitly asks.
+- For implementation requests, commit completed changes, push the branch, and
+  open a PR with `gh pr create`. Wait for review; merge only when the user asks.
 - Do not release, push images, or deploy without explicit authorization.
 - For code-review requests, read `.agents/code-review.md`.
 
