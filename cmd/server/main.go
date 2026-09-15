@@ -16,7 +16,11 @@ import (
 	"ytreverse/internal/youtube"
 )
 
-const shutdownTimeout = 25 * time.Second
+const (
+	shutdownTimeout   = 25 * time.Second
+	readHeaderTimeout = 5 * time.Second
+	readTimeout       = 10 * time.Second
+)
 
 func main() {
 	if err := run(); err != nil {
@@ -35,8 +39,10 @@ func run() error {
 
 	api := httpapi.New(yt, cfg.StaticDir)
 	server := &http.Server{
-		Addr:    cfg.Addr,
-		Handler: api.Handler(),
+		Addr:              cfg.Addr,
+		Handler:           api.Handler(),
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
 	}
 
 	signalCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
