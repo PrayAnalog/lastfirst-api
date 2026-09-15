@@ -27,12 +27,16 @@ func main() {
 	sigCtx, stop := signal.NotifyContext(ctx, syscall.SIGTERM)
 	defer stop()
 
+	shutdownDone := make(chan error, 1)
 	go func() {
 		<-sigCtx.Done()
-		httpServer.Shutdown(context.Background())
+		shutdownDone <- httpServer.Shutdown(context.Background())
 	}()
 
 	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatal(err)
+	}
+	if err := <-shutdownDone; err != nil {
 		log.Fatal(err)
 	}
 }
