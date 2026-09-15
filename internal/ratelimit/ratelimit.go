@@ -16,6 +16,7 @@ type IPLimiter struct {
 	buckets map[string]*bucket
 	burst   int
 	refill  time.Duration
+	maxIPs  int
 }
 
 type bucket struct {
@@ -23,8 +24,13 @@ type bucket struct {
 	lastSeen time.Time
 }
 
-func NewIPLimiter(burst int, refill time.Duration) *IPLimiter {
-	l := &IPLimiter{buckets: make(map[string]*bucket), burst: burst, refill: refill}
+func NewIPLimiter(burst int, refill time.Duration, maxIPs int) *IPLimiter {
+	l := &IPLimiter{
+		buckets: make(map[string]*bucket),
+		burst:   burst,
+		refill:  refill,
+		maxIPs:  maxIPs,
+	}
 	go l.cleanupLoop()
 	return l
 }
@@ -36,6 +42,12 @@ func (l *IPLimiter) Allow(ip string) bool {
 	now := time.Now()
 	b, ok := l.buckets[ip]
 	if !ok {
+		// Fail closed when the table is full. Without this bound, a stream of
+		// requests with distinct client addresses can turn the limiter itself
+		// into a memory-exhaustion vector.
+		if len(l.buckets) >= l.maxIPs {
+			return false
+		}
 		l.buckets[ip] = &bucket{tokens: l.burst - 1, lastSeen: now}
 		return true
 	}
@@ -75,15 +87,25 @@ type DailyBudget struct {
 	limit   int
 	used    int
 	resetAt time.Time
+	period  uint64
 }
 
 func NewDailyBudget(limit int) *DailyBudget {
 	return &DailyBudget{limit: limit, resetAt: nextPacificMidnight(time.Now())}
 }
 
-// Reserve commits cost units against today's budget and reports whether
-// there was room for them.
-func (b *DailyBudget) Reserve(cost int) bool {
+// Reservation holds a worst-case number of quota units until the caller
+// records the number actually attempted or releases it without making a call.
+type Reservation struct {
+	budget *DailyBudget
+	cost   int
+	period uint64
+	once   sync.Once
+}
+
+// Reserve holds cost units against today's budget and reports whether there
+// was room for them. Call Commit or Release on every successful reservation.
+func (b *DailyBudget) Reserve(cost int) (*Reservation, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -91,12 +113,35 @@ func (b *DailyBudget) Reserve(cost int) bool {
 	if !now.Before(b.resetAt) {
 		b.used = 0
 		b.resetAt = nextPacificMidnight(now)
+		b.period++
 	}
-	if b.used+cost > b.limit {
-		return false
+	if cost <= 0 || b.used > b.limit-cost {
+		return nil, false
 	}
 	b.used += cost
-	return true
+	return &Reservation{budget: b, cost: cost, period: b.period}, true
+}
+
+// Commit records actualCost units as spent and releases the unused portion of
+// the reservation. Values outside the reserved range are clamped defensively.
+func (r *Reservation) Commit(actualCost int) {
+	r.finish(actualCost)
+}
+
+// Release returns the entire reservation when no billable call was attempted.
+func (r *Reservation) Release() {
+	r.finish(0)
+}
+
+func (r *Reservation) finish(actualCost int) {
+	r.once.Do(func() {
+		actualCost = max(0, min(actualCost, r.cost))
+		r.budget.mu.Lock()
+		defer r.budget.mu.Unlock()
+		if r.period == r.budget.period {
+			r.budget.used -= r.cost - actualCost
+		}
+	})
 }
 
 func nextPacificMidnight(t time.Time) time.Time {

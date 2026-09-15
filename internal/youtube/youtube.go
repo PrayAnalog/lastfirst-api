@@ -3,6 +3,8 @@ package youtube
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
 	"time"
 
 	"google.golang.org/api/googleapi"
@@ -11,8 +13,9 @@ import (
 )
 
 var (
-	ErrNotFound      = errors.New("playlist not found or private")
-	ErrQuotaExceeded = errors.New("YouTube API quota exceeded, try again later")
+	ErrNotFound         = errors.New("playlist not found or private")
+	ErrQuotaExceeded    = errors.New("YouTube API quota exceeded, try again later")
+	ErrPageLimitReached = errors.New("playlist grew beyond the allowed size while it was being fetched")
 )
 
 const ReverseTitlePrefix = "[Reversed] "
@@ -39,11 +42,28 @@ type Client struct {
 }
 
 func New(ctx context.Context, apiKey string) (*Client, error) {
-	svc, err := yt.NewService(ctx, option.WithAPIKey(apiKey))
+	httpClient := &http.Client{Transport: &apiKeyTransport{
+		apiKey: apiKey,
+		base:   http.DefaultTransport,
+	}}
+	svc, err := yt.NewService(ctx, option.WithHTTPClient(httpClient))
 	if err != nil {
 		return nil, err
 	}
 	return &Client{svc: svc}, nil
+}
+
+// apiKeyTransport keeps the credential out of request URLs, which are much
+// more likely than headers to be captured by proxies and error logs.
+type apiKeyTransport struct {
+	apiKey string
+	base   http.RoundTripper
+}
+
+func (t *apiKeyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	cloned := req.Clone(req.Context())
+	cloned.Header.Set("X-Goog-Api-Key", t.apiKey)
+	return t.base.RoundTrip(cloned)
 }
 
 // FetchPlaylistMeta costs a single quota unit and reports the playlist's
@@ -61,11 +81,22 @@ func (c *Client) FetchPlaylistMeta(ctx context.Context, id string) (*Playlist, e
 	return &Playlist{ID: id, Title: it.Snippet.Title, ChannelTitle: it.Snippet.ChannelTitle, ItemCount: it.ContentDetails.ItemCount}, nil
 }
 
-// FetchPlaylistItems costs one quota unit per PageSize items.
-func (c *Client) FetchPlaylistItems(ctx context.Context, id string) ([]Item, error) {
+// FetchPlaylistItems costs one quota unit per page. The returned call count
+// includes a failed attempted page so the caller can account conservatively.
+func (c *Client) FetchPlaylistItems(ctx context.Context, id string, maxPages int) ([]Item, int, error) {
 	var items []Item
-	call := c.svc.PlaylistItems.List([]string{"snippet", "contentDetails"}).PlaylistId(id).MaxResults(PageSize)
-	err := call.Pages(ctx, func(page *yt.PlaylistItemListResponse) error {
+	pageToken := ""
+	calls := 0
+	for {
+		call := c.svc.PlaylistItems.List([]string{"snippet", "contentDetails"}).PlaylistId(id).MaxResults(PageSize)
+		if pageToken != "" {
+			call = call.PageToken(pageToken)
+		}
+		calls++
+		page, err := call.Context(ctx).Do()
+		if err != nil {
+			return nil, calls, apiErr(err)
+		}
 		for _, it := range page.Items {
 			item := Item{VideoID: it.ContentDetails.VideoId, Title: it.Snippet.Title}
 			if t, err := time.Parse(time.RFC3339, it.ContentDetails.VideoPublishedAt); err == nil {
@@ -73,12 +104,14 @@ func (c *Client) FetchPlaylistItems(ctx context.Context, id string) ([]Item, err
 			}
 			items = append(items, item)
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, apiErr(err)
+		if page.NextPageToken == "" {
+			return items, calls, nil
+		}
+		if calls >= maxPages {
+			return nil, calls, ErrPageLimitReached
+		}
+		pageToken = page.NextPageToken
 	}
-	return items, nil
 }
 
 func ReverseTitle(sourceTitle string) string {
@@ -96,13 +129,23 @@ func Reversed(items []Item) []string {
 }
 
 func apiErr(err error) error {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
 	var gerr *googleapi.Error
-	if errors.As(err, &gerr) && gerr.Code == 403 {
-		for _, e := range gerr.Errors {
-			if e.Reason == "quotaExceeded" {
-				return ErrQuotaExceeded
+	if errors.As(err, &gerr) {
+		if gerr.Code == 403 {
+			for _, e := range gerr.Errors {
+				if e.Reason == "quotaExceeded" {
+					return ErrQuotaExceeded
+				}
 			}
 		}
+		// googleapi.Error may include the upstream response body. Preserve the
+		// useful status without allowing a provider response into application logs.
+		return fmt.Errorf("YouTube API request failed with HTTP status %d", gerr.Code)
 	}
-	return err
+	// Transport errors can include the full request URL (and API key). Return a
+	// stable error instead of propagating credentials into logs.
+	return errors.New("YouTube API transport request failed")
 }

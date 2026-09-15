@@ -22,13 +22,16 @@ COPY backend/ ./
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /server ./cmd/server
 
 # ---- runtime (pinned to linux/amd64 to match DOKS nodes) ----
-FROM --platform=linux/amd64 alpine:3.20
+FROM --platform=linux/amd64 alpine:3.24
 WORKDIR /app
-COPY --from=backend /server ./server
-COPY --from=frontend /app/dist ./frontend/dist
+RUN apk add --no-cache ca-certificates
+COPY --from=backend --chown=65532:65532 /server ./server
+COPY --from=frontend --chown=65532:65532 /app/dist ./frontend/dist
 
 ENV ADDR=:8080
 ENV STATIC_DIR=/app/frontend/dist
 EXPOSE 8080
 
+USER 65532:65532
+STOPSIGNAL SIGTERM
 ENTRYPOINT ["./server"]

@@ -1,9 +1,11 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -31,29 +33,47 @@ const (
 	maxPlaylistCost  = 41 // 1 + 40 pages = up to 2000 items
 	ipBurst          = 5
 	ipRefill         = time.Minute
+	maxTrackedIPs    = 10000
+	maxRequestBody   = 4 << 10
+	maxConcurrent    = 8
+	requestTimeout   = 30 * time.Second
 )
 
-type Server struct {
-	yt        *youtube.Client
-	staticDir string
-	ipLimiter *ratelimit.IPLimiter
-	budget    *ratelimit.DailyBudget
+type youtubeClient interface {
+	FetchPlaylistMeta(context.Context, string) (*youtube.Playlist, error)
+	FetchPlaylistItems(context.Context, string, int) ([]youtube.Item, int, error)
 }
 
-func New(yt *youtube.Client, staticDir string) *Server {
+type Server struct {
+	yt                youtubeClient
+	staticDir         string
+	trustProxyHeaders bool
+	ipLimiter         *ratelimit.IPLimiter
+	budget            *ratelimit.DailyBudget
+	slots             chan struct{}
+}
+
+func New(yt youtubeClient, staticDir string, trustProxyHeaders bool) *Server {
 	return &Server{
-		yt:        yt,
-		staticDir: staticDir,
-		ipLimiter: ratelimit.NewIPLimiter(ipBurst, ipRefill),
-		budget:    ratelimit.NewDailyBudget(dailyQuotaBudget),
+		yt:                yt,
+		staticDir:         staticDir,
+		trustProxyHeaders: trustProxyHeaders,
+		ipLimiter:         ratelimit.NewIPLimiter(ipBurst, ipRefill, maxTrackedIPs),
+		budget:            ratelimit.NewDailyBudget(dailyQuotaBudget),
+		slots:             make(chan struct{}, maxConcurrent),
 	}
 }
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/playlists", s.createPlaylist)
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok\n"))
+	})
 	mux.Handle("/", s.spa())
-	return mux
+	return securityHeaders(mux)
 }
 
 type watchLink struct {
@@ -76,7 +96,8 @@ type playlistView struct {
 }
 
 func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
-	if !s.ipLimiter.Allow(clientIP(r)) {
+	if !s.ipLimiter.Allow(clientIP(r, s.trustProxyHeaders)) {
+		w.Header().Set("Retry-After", "60")
 		writeError(w, http.StatusTooManyRequests, "too many requests, please slow down and try again shortly")
 		return
 	}
@@ -84,7 +105,23 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Input string `json:"input"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&req); err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			writeError(w, http.StatusRequestEntityTooLarge, "request body too large")
+			return
+		}
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			writeError(w, http.StatusRequestEntityTooLarge, "request body too large")
+			return
+		}
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -94,7 +131,27 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	meta, err := s.yt.FetchPlaylistMeta(r.Context(), id)
+	select {
+	case s.slots <- struct{}{}:
+		defer func() { <-s.slots }()
+	default:
+		w.Header().Set("Retry-After", "1")
+		writeError(w, http.StatusServiceUnavailable, "service busy, please try again shortly")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), requestTimeout)
+	defer cancel()
+
+	metaReservation, ok := s.budget.Reserve(1)
+	if !ok {
+		w.Header().Set("Retry-After", "3600")
+		writeError(w, http.StatusTooManyRequests, "daily API quota exhausted, try again after quota resets at midnight Pacific Time")
+		return
+	}
+	defer metaReservation.Release()
+	meta, err := s.yt.FetchPlaylistMeta(ctx, id)
+	metaReservation.Commit(1)
 	switch {
 	case errors.Is(err, youtube.ErrNotFound):
 		writeError(w, http.StatusNotFound, err.Error())
@@ -103,28 +160,35 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, err.Error())
 		return
 	case err != nil:
-		serverError(w, err)
+		upstreamError(w, err)
 		return
 	}
 
-	pages := (meta.ItemCount + youtube.PageSize - 1) / youtube.PageSize
+	pages := max(int64(1), (meta.ItemCount+youtube.PageSize-1)/youtube.PageSize)
 	cost := int(1 + pages)
 	if cost > maxPlaylistCost {
 		writeError(w, http.StatusRequestEntityTooLarge, "playlist too large to process right now")
 		return
 	}
-	if !s.budget.Reserve(cost) {
+	itemReservation, ok := s.budget.Reserve(int(pages))
+	if !ok {
+		w.Header().Set("Retry-After", "3600")
 		writeError(w, http.StatusTooManyRequests, "daily API quota exhausted, try again after quota resets at midnight Pacific Time")
 		return
 	}
+	defer itemReservation.Release()
 
-	items, err := s.yt.FetchPlaylistItems(r.Context(), id)
+	items, calls, err := s.yt.FetchPlaylistItems(ctx, id, int(pages))
+	itemReservation.Commit(calls)
 	switch {
 	case errors.Is(err, youtube.ErrQuotaExceeded):
 		writeError(w, http.StatusServiceUnavailable, err.Error())
 		return
+	case errors.Is(err, youtube.ErrPageLimitReached):
+		writeError(w, http.StatusRequestEntityTooLarge, "playlist too large to process right now")
+		return
 	case err != nil:
-		serverError(w, err)
+		upstreamError(w, err)
 		return
 	}
 
@@ -142,12 +206,13 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// clientIP prefers X-Forwarded-For's first entry, since the service sits
-// behind a reverse proxy/ingress in deployment; it falls back to the raw
-// connection address for local/direct use.
-func clientIP(r *http.Request) string {
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		return strings.TrimSpace(strings.Split(fwd, ",")[0])
+// clientIP only accepts the ingress-controlled single-value header when the
+// deployment explicitly opts into trusting its reverse proxy.
+func clientIP(r *http.Request, trustProxyHeaders bool) string {
+	if trustProxyHeaders {
+		if forwarded := net.ParseIP(strings.TrimSpace(r.Header.Get("X-Real-IP"))); forwarded != nil {
+			return forwarded.String()
+		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -195,12 +260,34 @@ func serverError(w http.ResponseWriter, err error) {
 	writeError(w, http.StatusInternalServerError, "internal error")
 }
 
+func upstreamError(w http.ResponseWriter, err error) {
+	if errors.Is(err, context.DeadlineExceeded) {
+		writeError(w, http.StatusGatewayTimeout, "upstream request timed out")
+		return
+	}
+	serverError(w, err)
+}
+
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		log.Printf("write JSON response: %v", err)
+	}
+}
+
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' https://i.ytimg.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		next.ServeHTTP(w, r)
+	})
 }
