@@ -1,0 +1,42 @@
+language: ko
+reviews:
+  profile: chill
+  request_changes_workflow: true
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - "!go.sum"
+  path_instructions:
+    - path: "**/*.go"
+      instructions: |
+        Flag returned errors that are dropped or swallowed, and values used
+        before their error is checked.
+        Flag request-scoped work that does not propagate the incoming
+        context.Context.
+        Flag shared state mutated without synchronization.
+        Do not suggest adding comments, doc comments, or tests. Do not
+        suggest renaming for style alone. Do not report gofmt-level
+        formatting.
+    - path: "internal/httpapi/**"
+      instructions: |
+        Flag handlers that can panic on malformed or missing input.
+        Flag responses that expose internal error text, stack traces, or the
+        YouTube API key to clients.
+        Flag quota accounting mistakes: a reservation taken on a path that
+        later fails without releasing it, or an API call made before the
+        budget is reserved.
+    - path: "internal/ratelimit/**"
+      instructions: |
+        This package is called concurrently from HTTP handlers. Flag any map
+        or counter access that is not guarded, and any limiter state that
+        grows without bound.
+    - path: "deploy/**"
+      instructions: |
+        Flag missing readiness or liveness probes, missing resource requests
+        and limits, and changes that would cause dropped connections during a
+        rolling update.
+        Flag secrets committed as literal values instead of secretKeyRef.
+  tools:
+    golangci-lint:
+      enabled: true
