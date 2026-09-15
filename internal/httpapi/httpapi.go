@@ -19,6 +19,12 @@ import (
 
 const watchChunk = 50
 
+// maxRequestBodyBytes bounds how much of the request body we'll read
+// before decoding it as JSON, so an oversized body can't be used to
+// exhaust memory. The body is just {"input": "<url or id>"}, which is at
+// most a few hundred bytes in practice.
+const maxRequestBodyBytes = 8 << 10 // 8 KiB
+
 // Quota policy: YouTube's default daily API quota is 10,000 units. We only
 // budget 8,000/day for this endpoint, keeping headroom for other usage of
 // the same key (console testing, future features). A request costs
@@ -81,6 +87,7 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
 	var req struct {
 		Input string `json:"input"`
 	}
@@ -142,12 +149,15 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// clientIP prefers X-Forwarded-For's first entry, since the service sits
-// behind a reverse proxy/ingress in deployment; it falls back to the raw
-// connection address for local/direct use.
+// clientIP identifies the caller for per-IP rate limiting. It trusts
+// X-Real-IP, which the nginx ingress in front of this service overwrites
+// with the actual connecting address; unlike X-Forwarded-For, a client
+// can prepend arbitrary values to that header to defeat the rate limiter,
+// so it is not used here. It falls back to the raw connection address for
+// local/direct use without an ingress in front.
 func clientIP(r *http.Request) string {
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		return strings.TrimSpace(strings.Split(fwd, ",")[0])
+	if ip := r.Header.Get("X-Real-IP"); ip != "" {
+		return ip
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
