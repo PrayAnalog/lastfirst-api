@@ -92,6 +92,8 @@ def main():
     print("--- Review bodies (check for findings with no comment id, e.g. "
           "CodeRabbit's 'outside diff range' section) ---\n")
     for r in reviews:
+        if r["user"]["login"] == author:
+            continue
         body = (r.get("body") or "").strip()
         if not body:
             continue
