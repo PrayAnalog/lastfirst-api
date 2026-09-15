@@ -45,6 +45,6 @@ func main() {
 	shutdownCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)
 	defer cancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		log.Fatal(err)
+		log.Print(err)
 	}
 }
