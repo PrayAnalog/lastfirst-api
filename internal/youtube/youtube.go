@@ -76,7 +76,7 @@ func (c *Client) FetchPlaylistItems(ctx context.Context, id string) ([]Item, err
 		return nil
 	})
 	if err != nil {
-		return nil, apiErr(err)
+		return items, apiErr(err)
 	}
 	return items, nil
 }

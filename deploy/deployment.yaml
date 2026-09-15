@@ -12,7 +12,7 @@ spec:
       labels:
         app: yt-reverse-playlist
     spec:
-      terminationGracePeriodSeconds: 150
+      terminationGracePeriodSeconds: 165
       containers:
         - name: backend
           image: registry.digitalocean.com/lastfirst/backend:v1

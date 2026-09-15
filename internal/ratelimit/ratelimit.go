@@ -99,6 +99,27 @@ func (b *DailyBudget) Reserve(cost int) bool {
 	return true
 }
 
+// Release returns units to today's budget, for a reservation that turned
+// out larger than the work actually done.
+func (b *DailyBudget) Release(units int) {
+	if units <= 0 {
+		return
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	now := time.Now()
+	if !now.Before(b.resetAt) {
+		b.used = 0
+		b.resetAt = nextPacificMidnight(now)
+		return
+	}
+	b.used -= units
+	if b.used < 0 {
+		b.used = 0
+	}
+}
+
 func nextPacificMidnight(t time.Time) time.Time {
 	loc, err := time.LoadLocation("America/Los_Angeles")
 	if err != nil {

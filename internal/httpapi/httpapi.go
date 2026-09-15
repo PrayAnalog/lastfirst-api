@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -90,7 +91,12 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Input string `json:"input"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := dec.Decode(&struct{}{}); err != io.EOF {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -102,6 +108,11 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(r.Context(), RequestTimeout)
 	defer cancel()
+
+	if !s.budget.Reserve(1) {
+		writeError(w, http.StatusTooManyRequests, "daily API quota exhausted, try again after quota resets at midnight Pacific Time")
+		return
+	}
 
 	meta, err := s.yt.FetchPlaylistMeta(ctx, id)
 	switch {
@@ -122,12 +133,18 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusRequestEntityTooLarge, "playlist too large to process right now")
 		return
 	}
-	if !s.budget.Reserve(cost) {
+	if !s.budget.Reserve(cost - 1) {
 		writeError(w, http.StatusTooManyRequests, "daily API quota exhausted, try again after quota resets at midnight Pacific Time")
 		return
 	}
 
 	items, err := s.yt.FetchPlaylistItems(ctx, id)
+	if err != nil {
+		completedPages := (int64(len(items)) + youtube.PageSize - 1) / youtube.PageSize
+		if completedPages < pages {
+			s.budget.Release(int(pages - completedPages))
+		}
+	}
 	switch {
 	case errors.Is(err, youtube.ErrQuotaExceeded):
 		writeError(w, http.StatusServiceUnavailable, err.Error())

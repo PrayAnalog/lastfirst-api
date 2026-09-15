@@ -23,15 +23,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	const shutdownTimeout = httpapi.RequestTimeout + 10*time.Second
+	const readTimeout = 10 * time.Second
+	const writeTimeout = httpapi.RequestTimeout + readTimeout + 5*time.Second
+	const shutdownTimeout = writeTimeout + 10*time.Second
 
 	srv := httpapi.New(yt, cfg.StaticDir)
 	server := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           srv.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      httpapi.RequestTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
 		IdleTimeout:       90 * time.Second,
 	}
 
@@ -57,7 +59,11 @@ func main() {
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Fatal(err)
 	}
-	if listenErr != nil {
+
+	if listenErr == nil {
+		listenErr = <-serveErr
+	}
+	if !errors.Is(listenErr, http.ErrServerClosed) {
 		log.Fatal(listenErr)
 	}
 }
