@@ -22,8 +22,8 @@ semantics, and deployment assumptions unless the request changes them.
 
 ## Workflow
 
-- Never commit or push directly to `main`. Use a dedicated branch; Codex branches
-  use `codex/<topic>`.
+- Never commit or push directly to `main`. Use a dedicated branch named for the
+  change type, such as `feat/<topic>`, `fix/<topic>`, or `chore/<topic>`.
 - Preserve unrelated working-tree changes and keep each diff focused.
 - For implementation requests, commit completed changes, push the branch, and
   open a PR with `gh pr create`. Wait for review; merge only when the user asks.
