@@ -1,5 +1,16 @@
 #!/bin/bash
-input=$(cat)
+input=$(</dev/stdin)
+
+case "$input" in
+  *"gh pr create"*) ;;
+  *) exit 0 ;;
+esac
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "require-code-review: jq not found, so the pre-PR review gate cannot run. Install jq or remove the hook from .claude/settings.json." >&2
+  exit 1
+fi
+
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // ""')
 
 printf '%s' "$cmd" | grep -Eq '(^|[;&|(])[[:space:]]*gh[[:space:]]+pr[[:space:]]+create([[:space:]]|$)' || exit 0
