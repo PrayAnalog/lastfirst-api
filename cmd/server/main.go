@@ -26,10 +26,8 @@ func main() {
 		Handler:           srv.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
-		// Generous: fetching a large playlist can make up to ~40
-		// sequential YouTube API calls before the response is written.
-		WriteTimeout: 2 * time.Minute,
-		IdleTimeout:  90 * time.Second,
+		WriteTimeout:      2 * time.Minute,
+		IdleTimeout:       90 * time.Second,
 	}
 	log.Fatal(server.ListenAndServe())
 }
