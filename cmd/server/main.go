@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os/signal"
+	"syscall"
 
 	"ytreverse/internal/config"
 	"ytreverse/internal/httpapi"
@@ -20,5 +22,17 @@ func main() {
 	}
 
 	srv := httpapi.New(yt, cfg.StaticDir)
-	log.Fatal(http.ListenAndServe(cfg.Addr, srv.Handler()))
+	httpServer := &http.Server{Addr: cfg.Addr, Handler: srv.Handler()}
+
+	sigCtx, stop := signal.NotifyContext(ctx, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		<-sigCtx.Done()
+		httpServer.Shutdown(context.Background())
+	}()
+
+	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatal(err)
+	}
 }
