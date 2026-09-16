@@ -9,10 +9,11 @@ supported.
 ## Reporting a vulnerability
 
 Do not open a public issue with exploit details, credentials, personal data, or
-a working proof of concept. Report the issue privately through the repository's
-**Security** tab by creating a draft security advisory or using **Report a
-vulnerability** when that option is available. If neither option is available,
-email `agy0304@gmail.com` with the subject `[lastfirst-api security]`.
+a working proof of concept. External reporters should use **Report a
+vulnerability** on the repository's **Security** tab when that option is
+available; otherwise, email `agy0304@gmail.com` with the subject
+`[lastfirst-api security]`. Repository administrators and security managers may
+instead create a draft security advisory directly.
 
 Include the affected component, expected impact, reproduction steps, and any
 known mitigation. Remove real credentials and personal data from every example.
