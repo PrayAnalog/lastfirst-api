@@ -6,7 +6,8 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/limit-connections: "20"
-    nginx.ingress.kubernetes.io/proxy-body-size: "4k"
+    # Keep this above the app's 4 KiB limit so API clients receive its JSON 413.
+    nginx.ingress.kubernetes.io/proxy-body-size: "8k"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "5"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "40"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "40"

@@ -27,6 +27,10 @@ spec:
         - name: backend
           image: registry.digitalocean.com/lastfirst/backend:v1
           imagePullPolicy: Always
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
           ports:
             - name: http
               containerPort: 8080
