@@ -4,6 +4,14 @@ Work through this against the branch diff before `gh pr create`, and again
 before every push that answers review feedback. Each item stands for a defect
 that reached review in this repository at least once.
 
+## 0. The diff is one change
+
+Describe the diff in one sentence. If the sentence needs "and" to cover two
+behaviors that could be reverted separately, split the branch: #20 carried
+seven such behaviors and every fix to one of them reopened review of all the
+others. A change whose bounds are written over another change's bounds is
+stacked on that change's branch rather than folded into it.
+
 ## 1. Walk the named behavior as an event sequence
 
 Write down the sequence the request names — signal arrives, listener closes,
@@ -18,15 +26,18 @@ its error on *every* path through the function, including paths that return
 early or take a different `select` branch. A buffered channel written by a
 goroutine and read on only one path loses real failures silently.
 
+Test code and trivial handlers are not exempt: a dropped `w.Write` error in a
+test stub or a health handler was flagged under the same rule.
+
 ## 3. Derive coupled limits from one source and order them
 
 List every bound the change touches — handler deadline, `ReadHeaderTimeout`,
 `ReadTimeout`, `WriteTimeout`, `IdleTimeout`, shutdown deadline,
-`terminationGracePeriodSeconds`, `preStop`, probe timings — next to the event
-each one starts counting from. Bounds that start at different events are not
-comparable without the gap between those events as headroom. Write each wider
-bound as an expression over the narrower one so the ordering cannot drift when
-one value is edited.
+`terminationGracePeriodSeconds`, `preStop`, probe timings, the ingress proxy
+timeouts in front of the handler — next to the event each one starts counting
+from. Bounds that start at different events are not comparable without the gap
+between those events as headroom. Write each wider bound as an expression over
+the narrower one so the ordering cannot drift when one value is edited.
 
 ## 4. Claim a metered resource per call, not per prediction
 
@@ -60,6 +71,13 @@ a grace period that covers it. The same applies to trusted headers (who sets
 it), probes (what they exercise), and image entrypoints (what receives the
 signal).
 
+Two far sides are easy to miss. A limit the application enforces — body size,
+request duration — is enforced first by the ingress in front of it when the
+ingress limit is tighter, and clients then get the ingress's answer instead of
+the application's. And state kept in process memory — the daily budget, the
+per-IP limiter — is multiplied by every pod alive at once, which includes the
+old pod still draining during a rollout or eviction.
+
 ## 6. Re-read the authoring rules for the paths touched
 
 Re-read `path_instructions` in `.coderabbit.yaml` and **Production boundaries**
@@ -74,7 +92,15 @@ by guessing at a manifest. Record it in the PR body as a pre-deploy check or an
 explicit non-goal, with the reason it cannot be settled here, and answer the
 review thread with that same repository evidence.
 
-## 8. Answer each review round in the thread
+## 8. Decide every default the diff makes explicit
+
+Replacing an implicit construct with an explicit one — `http.ListenAndServe`
+with an `http.Server`, a default client with a configured one — puts its zero
+values in the diff, and review treats them as decisions this change made. Set
+each field the construct exposes deliberately, or say in the PR body why the
+zero value is correct.
+
+## 9. Answer each review round in the thread
 
 Fix the valid findings in a commit, then reply to every thread with the commit
 that addressed it and what changed, or with the reason it is being declined.
