@@ -68,5 +68,21 @@ already in flight before exiting. The `preStop` delay and
 are sized for that drain; changing the request timeout in
 `internal/httpapi` means resizing both.
 
-Rate limiting is keyed on `X-Real-IP`, which assumes the ingress sets it and
-that nothing reaches the Service without passing through the ingress.
+Rate limiting is keyed on `X-Real-IP`, which the nginx ingress overwrites with
+the address it accepted the connection from. Two things outside this repository
+have to hold for that key to mean anything, and both are worth checking before
+exposing the service publicly:
+
+```bash
+# Must print "Local". Otherwise the load balancer SNATs connections, the
+# ingress sees one node address for every visitor, and all public users share
+# a single rate-limit bucket.
+kubectl -n ingress-nginx get svc ingress-nginx-controller \
+  -o jsonpath='{.spec.externalTrafficPolicy}'
+```
+
+Anything able to reach the Service without going through the ingress can also
+set `X-Real-IP` itself and pick its own bucket. Restricting that needs a
+`NetworkPolicy` targeting the ingress controller's real namespace and Pod
+labels, which are not defined here — a wrong selector fails closed and takes
+down all public traffic, so it belongs with the cluster's own manifests.
