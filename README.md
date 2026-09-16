@@ -28,7 +28,7 @@ with source/reverse playlist titles and item counts.
 
 Requests are limited to a 4 KiB JSON body and playlists of at most 2,000
 items. The service processes at most eight playlist requests concurrently
-and gives each request 30 seconds for YouTube API work. Capacity and rate
+and gives each request 25 seconds for YouTube API work. Capacity and rate
 limit responses include `Retry-After`.
 
 ## Configuration

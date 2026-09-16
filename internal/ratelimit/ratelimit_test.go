@@ -35,12 +35,24 @@ func TestReservationReleaseReturnsCapacity(t *testing.T) {
 	}
 }
 
-func TestIPLimiterBoundsTrackedAddresses(t *testing.T) {
+func TestIPLimiterEvictsLeastRecentlyUsedAddressAtBound(t *testing.T) {
 	limiter := NewIPLimiter(1, time.Hour, 2)
 	if !limiter.Allow("192.0.2.1") || !limiter.Allow("192.0.2.2") {
 		t.Fatal("limiter rejected an address before reaching its bound")
 	}
-	if limiter.Allow("192.0.2.3") {
-		t.Fatal("limiter accepted a new address after reaching its bound")
+	if limiter.Allow("192.0.2.1") {
+		t.Fatal("limiter refilled a recently used address too early")
+	}
+	if !limiter.Allow("192.0.2.3") {
+		t.Fatal("limiter rejected a new address at its bound")
+	}
+
+	limiter.mu.Lock()
+	defer limiter.mu.Unlock()
+	if _, ok := limiter.buckets["192.0.2.2"]; ok {
+		t.Fatal("least recently used address was not evicted")
+	}
+	if len(limiter.buckets) != 2 {
+		t.Fatalf("tracked addresses = %d, want 2", len(limiter.buckets))
 	}
 }

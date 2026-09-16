@@ -54,7 +54,7 @@ func main() {
 		}
 	case <-ctx.Done():
 		log.Print("shutdown signal received; draining connections")
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			log.Printf("graceful shutdown failed: %v", err)

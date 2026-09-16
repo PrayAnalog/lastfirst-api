@@ -36,7 +36,7 @@ const (
 	maxTrackedIPs    = 10000
 	maxRequestBody   = 4 << 10
 	maxConcurrent    = 8
-	requestTimeout   = 30 * time.Second
+	requestTimeout   = 25 * time.Second
 )
 
 type youtubeClient interface {
@@ -70,7 +70,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok\n"))
+		if _, err := w.Write([]byte("ok\n")); err != nil {
+			log.Printf("write healthz response: %v", err)
+		}
 	})
 	mux.Handle("/", s.spa())
 	return securityHeaders(mux)

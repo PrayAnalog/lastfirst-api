@@ -5,6 +5,7 @@
 package ratelimit
 
 import (
+	"container/list"
 	"sync"
 	"time"
 )
@@ -14,19 +15,23 @@ import (
 type IPLimiter struct {
 	mu      sync.Mutex
 	buckets map[string]*bucket
+	recent  *list.List
 	burst   int
 	refill  time.Duration
 	maxIPs  int
 }
 
 type bucket struct {
-	tokens   int
-	lastSeen time.Time
+	tokens     int
+	lastRefill time.Time
+	lastSeen   time.Time
+	recent     *list.Element
 }
 
 func NewIPLimiter(burst int, refill time.Duration, maxIPs int) *IPLimiter {
 	l := &IPLimiter{
 		buckets: make(map[string]*bucket),
+		recent:  list.New(),
 		burst:   burst,
 		refill:  refill,
 		maxIPs:  maxIPs,
@@ -42,19 +47,29 @@ func (l *IPLimiter) Allow(ip string) bool {
 	now := time.Now()
 	b, ok := l.buckets[ip]
 	if !ok {
-		// Fail closed when the table is full. Without this bound, a stream of
-		// requests with distinct client addresses can turn the limiter itself
-		// into a memory-exhaustion vector.
+		// Keep memory bounded without allowing a full table to lock every new
+		// client out. Address churn can still evade a process-local IP limiter,
+		// so ingress/edge controls remain necessary for distributed attacks.
 		if len(l.buckets) >= l.maxIPs {
-			return false
+			oldest := l.recent.Back()
+			delete(l.buckets, oldest.Value.(string))
+			l.recent.Remove(oldest)
 		}
-		l.buckets[ip] = &bucket{tokens: l.burst - 1, lastSeen: now}
+		element := l.recent.PushFront(ip)
+		l.buckets[ip] = &bucket{
+			tokens:     l.burst - 1,
+			lastRefill: now,
+			lastSeen:   now,
+			recent:     element,
+		}
 		return true
 	}
 
-	if refilled := int(now.Sub(b.lastSeen) / l.refill); refilled > 0 {
+	l.recent.MoveToFront(b.recent)
+	b.lastSeen = now
+	if refilled := int(now.Sub(b.lastRefill) / l.refill); refilled > 0 {
 		b.tokens = min(b.tokens+refilled, l.burst)
-		b.lastSeen = now
+		b.lastRefill = b.lastRefill.Add(time.Duration(refilled) * l.refill)
 	}
 	if b.tokens <= 0 {
 		return false
@@ -72,6 +87,7 @@ func (l *IPLimiter) cleanupLoop() {
 		now := time.Now()
 		for ip, b := range l.buckets {
 			if now.Sub(b.lastSeen) > idleAfter {
+				l.recent.Remove(b.recent)
 				delete(l.buckets, ip)
 			}
 		}
