@@ -5,6 +5,9 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+  pre_merge_checks:
+    docstrings:
+      mode: off
   path_filters:
     - "!go.sum"
   path_instructions:
@@ -23,9 +26,10 @@ reviews:
         Flag handlers that can panic on malformed or missing input.
         Flag responses that expose internal error text, stack traces, or the
         YouTube API key to clients.
-        Flag quota accounting mistakes: a reservation taken on a path that
-        later fails without releasing it, or an API call made before the
-        budget is reserved.
+        Flag quota accounting mistakes: a reservation retained when no
+        billable call was attempted, or an API call made before the budget is
+        reserved. Do not require releasing reservations for failed calls that
+        may already have been billed.
     - path: "internal/ratelimit/**"
       instructions: |
         This package is called concurrently from HTTP handlers. Flag any map
@@ -35,7 +39,10 @@ reviews:
       instructions: |
         Flag missing readiness or liveness probes, missing resource requests
         and limits, and changes that would cause dropped connections during a
-        rolling update.
+        workload replacement or rollout.
+        When quota or rate-limit state is process-local, flag controllers that
+        can overlap terminating and replacement pods during ordinary deletion,
+        eviction, or revision updates.
         Flag secrets committed as literal values instead of secretKeyRef.
   tools:
     golangci-lint:

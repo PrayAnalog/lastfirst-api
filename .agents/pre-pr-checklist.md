@@ -29,6 +29,11 @@ goroutine and read on only one path loses real failures silently.
 Test code and trivial handlers are not exempt: a dropped `w.Write` error in a
 test stub or a health handler was flagged under the same rule.
 
+Sanitizing an upstream error for clients must not erase the server-side failure
+category. Keep client responses stable and secret-free while retaining a safe
+HTTP status, DNS, TLS, timeout, or network category in logs; never copy raw
+provider bodies or credential-bearing URLs to recover diagnostic detail.
+
 ## 3. Derive coupled limits from one source and order them
 
 List every bound the change touches — handler deadline, `ReadHeaderTimeout`,
@@ -77,6 +82,13 @@ ingress limit is tighter, and clients then get the ingress's answer instead of
 the application's. And state kept in process memory — the daily budget, the
 per-IP limiter — is multiplied by every pod alive at once, which includes the
 old pod still draining during a rollout or eviction.
+
+A strategy that sequences revision updates may not govern replacement after an
+ordinary pod deletion. Verify the workload controller's behavior for rollouts,
+evictions, and deletions. If the workload kind or object identity changes,
+remember that `kubectl apply` does not prune the old controller: document a
+scale-to-zero, wait-for-deletion, and removal sequence before creating the new
+one.
 
 ## 6. Re-read the authoring rules for the paths touched
 
