@@ -75,28 +75,67 @@ type DailyBudget struct {
 	limit   int
 	used    int
 	resetAt time.Time
+	// day counts rollovers rather than naming one, so a reservation can tell
+	// the day it was taken in from the day it is being settled in even when
+	// both fall on the same wall-clock date.
+	day uint64
+}
+
+// Reservation is a claim on one accounting day's budget, held until the
+// caller knows how many units the work really cost.
+type Reservation struct {
+	budget *DailyBudget
+	day    uint64
+	units  int
 }
 
 func NewDailyBudget(limit int) *DailyBudget {
 	return &DailyBudget{limit: limit, resetAt: nextPacificMidnight(time.Now())}
 }
 
-// Reserve commits cost units against today's budget and reports whether
-// there was room for them.
-func (b *DailyBudget) Reserve(cost int) bool {
+// Reserve claims cost units against today's budget and reports whether there
+// was room for them. The claim is charged up front, so the caller can make
+// the calls it covers before knowing how many it will need.
+func (b *DailyBudget) Reserve(cost int) (*Reservation, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	now := time.Now()
+	b.rollOverLocked(time.Now())
+	if b.used+cost > b.limit {
+		return nil, false
+	}
+	b.used += cost
+	return &Reservation{budget: b, day: b.day, units: cost}, true
+}
+
+// Settle replaces a reservation with the units actually spent: unused units
+// go back to the budget, and work that ran past its reservation is charged
+// for what it really used, even if that takes the day over its limit. A
+// reservation taken before the budget rolled over is dropped rather than
+// applied to the new day, whose used total it says nothing about. Settling
+// again reconciles against the figure last settled.
+func (r *Reservation) Settle(spent int) {
+	b := r.budget
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	b.rollOverLocked(time.Now())
+	if b.day != r.day {
+		return
+	}
+	b.used += spent - r.units
+	if b.used < 0 {
+		b.used = 0
+	}
+	r.units = spent
+}
+
+func (b *DailyBudget) rollOverLocked(now time.Time) {
 	if !now.Before(b.resetAt) {
 		b.used = 0
 		b.resetAt = nextPacificMidnight(now)
+		b.day++
 	}
-	if b.used+cost > b.limit {
-		return false
-	}
-	b.used += cost
-	return true
 }
 
 func nextPacificMidnight(t time.Time) time.Time {

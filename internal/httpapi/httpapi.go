@@ -1,9 +1,11 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -19,16 +21,27 @@ import (
 
 const watchChunk = 50
 
+const maxRequestBodyBytes = 8 << 10
+
+// RequestTimeout bounds the upstream work behind one playlist request, which
+// is up to maxPlaylistCost sequential YouTube calls. cmd/server derives the
+// connection write deadline and the shutdown budget from it, so a request
+// that runs to this limit is still allowed to finish.
+const RequestTimeout = 2 * time.Minute
+
+const quotaExhaustedMessage = "daily API quota exhausted, try again after quota resets at midnight Pacific Time"
+
 // Quota policy: YouTube's default daily API quota is 10,000 units. We only
 // budget 8,000/day for this endpoint, keeping headroom for other usage of
 // the same key (console testing, future features). A request costs
-// 1 unit (playlist metadata) + 1 unit per PageSize items fetched; a single
+// 1 unit (playlist metadata) + 1 unit per page of items fetched; a single
 // playlist is capped at maxPlaylistCost so no one request can eat the
 // whole day's budget. The per-IP limiter (5 burst, 1/min refill) stops a
 // single caller from looping requests faster than a person would.
 const (
 	dailyQuotaBudget = 8000
-	maxPlaylistCost  = 41 // 1 + 40 pages = up to 2000 items
+	metaCost         = 1  // one playlists.list call
+	maxPlaylistCost  = 41 // metaCost + 40 pages = up to 2000 items
 	ipBurst          = 5
 	ipRefill         = time.Minute
 )
@@ -51,6 +64,7 @@ func New(yt *youtube.Client, staticDir string) *Server {
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", func(http.ResponseWriter, *http.Request) {})
 	mux.HandleFunc("POST /api/playlists", s.createPlaylist)
 	mux.Handle("/", s.spa())
 	return mux
@@ -81,10 +95,19 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
 	var req struct {
 		Input string `json:"input"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	// Decode stops at the end of the first JSON value, so a body that carries
+	// megabytes of anything after a valid prefix is never read far enough to
+	// trip MaxBytesReader.
+	if err := dec.Decode(new(struct{})); !errors.Is(err, io.EOF) {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -94,7 +117,19 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	meta, err := s.yt.FetchPlaylistMeta(r.Context(), id)
+	ctx, cancel := context.WithTimeout(r.Context(), RequestTimeout)
+	defer cancel()
+
+	// Reserved before the call, not after: this call is what sizes the next
+	// reservation, so by the time its result is known the unit is spent. It is
+	// never settled back — a metadata call that failed may still have been
+	// billed, and over-charging by one unit is the safe direction to be wrong.
+	if _, ok := s.budget.Reserve(metaCost); !ok {
+		writeError(w, http.StatusTooManyRequests, quotaExhaustedMessage)
+		return
+	}
+
+	meta, err := s.yt.FetchPlaylistMeta(ctx, id)
 	switch {
 	case errors.Is(err, youtube.ErrNotFound):
 		writeError(w, http.StatusNotFound, err.Error())
@@ -107,18 +142,20 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pages := (meta.ItemCount + youtube.PageSize - 1) / youtube.PageSize
-	cost := int(1 + pages)
-	if cost > maxPlaylistCost {
+	// An empty playlist still costs one playlistItems.list call.
+	pages := max(int((meta.ItemCount+youtube.PageSize-1)/youtube.PageSize), 1)
+	if metaCost+pages > maxPlaylistCost {
 		writeError(w, http.StatusRequestEntityTooLarge, "playlist too large to process right now")
 		return
 	}
-	if !s.budget.Reserve(cost) {
-		writeError(w, http.StatusTooManyRequests, "daily API quota exhausted, try again after quota resets at midnight Pacific Time")
+	reservation, ok := s.budget.Reserve(pages)
+	if !ok {
+		writeError(w, http.StatusTooManyRequests, quotaExhaustedMessage)
 		return
 	}
 
-	items, err := s.yt.FetchPlaylistItems(r.Context(), id)
+	items, attempted, err := s.yt.FetchPlaylistItems(ctx, id)
+	reservation.Settle(attempted)
 	switch {
 	case errors.Is(err, youtube.ErrQuotaExceeded):
 		writeError(w, http.StatusServiceUnavailable, err.Error())
@@ -142,12 +179,14 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// clientIP prefers X-Forwarded-For's first entry, since the service sits
-// behind a reverse proxy/ingress in deployment; it falls back to the raw
+// clientIP prefers X-Real-IP, which the nginx ingress overwrites with the
+// address it accepted the connection from. X-Forwarded-For is appended to
+// rather than replaced, so its first entry is whatever the caller put there
+// and a client could pick its own rate-limit bucket. Falls back to the raw
 // connection address for local/direct use.
 func clientIP(r *http.Request) string {
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		return strings.TrimSpace(strings.Split(fwd, ",")[0])
+	if ip := r.Header.Get("X-Real-IP"); ip != "" {
+		return ip
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {

@@ -61,11 +61,22 @@ func (c *Client) FetchPlaylistMeta(ctx context.Context, id string) (*Playlist, e
 	return &Playlist{ID: id, Title: it.Snippet.Title, ChannelTitle: it.Snippet.ChannelTitle, ItemCount: it.ContentDetails.ItemCount}, nil
 }
 
-// FetchPlaylistItems costs one quota unit per PageSize items.
-func (c *Client) FetchPlaylistItems(ctx context.Context, id string) ([]Item, error) {
+// FetchPlaylistItems costs one quota unit per page request, which is one
+// request per PageSize items plus however many short pages the API decides to
+// return. It reports how many page requests it made, counting a failed one:
+// that request may still have reached YouTube and been billed. Items gathered
+// before a failure come back alongside the error, so a caller that gave up
+// early still knows what its reservation bought.
+func (c *Client) FetchPlaylistItems(ctx context.Context, id string) ([]Item, int, error) {
+	call := c.svc.PlaylistItems.List([]string{"snippet", "contentDetails"}).PlaylistId(id).MaxResults(PageSize).Context(ctx)
 	var items []Item
-	call := c.svc.PlaylistItems.List([]string{"snippet", "contentDetails"}).PlaylistId(id).MaxResults(PageSize)
-	err := call.Pages(ctx, func(page *yt.PlaylistItemListResponse) error {
+	pages := 0
+	for {
+		pages++
+		page, err := call.Do()
+		if err != nil {
+			return items, pages, apiErr(err)
+		}
 		for _, it := range page.Items {
 			item := Item{VideoID: it.ContentDetails.VideoId, Title: it.Snippet.Title}
 			if t, err := time.Parse(time.RFC3339, it.ContentDetails.VideoPublishedAt); err == nil {
@@ -73,12 +84,11 @@ func (c *Client) FetchPlaylistItems(ctx context.Context, id string) ([]Item, err
 			}
 			items = append(items, item)
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, apiErr(err)
+		if page.NextPageToken == "" {
+			return items, pages, nil
+		}
+		call = call.PageToken(page.NextPageToken)
 	}
-	return items, nil
 }
 
 func ReverseTitle(sourceTitle string) string {

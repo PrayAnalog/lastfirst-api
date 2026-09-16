@@ -12,6 +12,14 @@ spec:
       labels:
         app: yt-reverse-playlist
     spec:
+      # preStop runs to completion before the container is sent SIGTERM, so the
+      # pod keeps serving normally while its removal from the Service endpoints
+      # propagates through kube-proxy and the nginx ingress. Without it the
+      # server closes its listener while requests are still being routed here,
+      # and those requests are refused rather than drained.
+      # terminationGracePeriodSeconds covers that delay plus shutdownTimeout in
+      # cmd/server/main.go (145s), with room left before the kubelet's SIGKILL.
+      terminationGracePeriodSeconds: 165
       containers:
         - name: backend
           image: registry.digitalocean.com/lastfirst/backend:v1
@@ -24,3 +32,24 @@ spec:
                 secretKeyRef:
                   name: yt-api-key
                   key: YT_API_KEY
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            periodSeconds: 20
