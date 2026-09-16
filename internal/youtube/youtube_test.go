@@ -206,3 +206,22 @@ func TestFetchPlaylistItemsReservesNothingForADoneContext(t *testing.T) {
 		t.Errorf("sequence %v, want nothing reserved and nothing requested", log)
 	}
 }
+
+// The cap allows maxPages requests; it must not stop one short and refuse a
+// playlist that fits exactly.
+func TestFetchPlaylistItemsAllowsExactlyMaxPages(t *testing.T) {
+	var log []string
+	c := stubClient(t, &log, page(PageSize, "next"), page(PageSize, ""))
+
+	items, err := c.FetchPlaylistItems(context.Background(), "PL", 2, granting(&log))
+	if err != nil {
+		t.Fatalf("a playlist needing exactly the 2 allowed page requests failed: %v", err)
+	}
+	if len(items) != 2*PageSize {
+		t.Errorf("collected %d items, want %d", len(items), 2*PageSize)
+	}
+	want := []string{"reserve", "request", "reserve", "request"}
+	if !slices.Equal(log, want) {
+		t.Errorf("sequence %v, want %v", log, want)
+	}
+}
