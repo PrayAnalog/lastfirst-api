@@ -60,9 +60,16 @@ base_sha=$(git rev-parse --verify "origin/$base_ref^{commit}" 2>/dev/null) ||
 merge_base=$(git merge-base "$sha" "$base_sha" 2>/dev/null) ||
   deny "$sha and $base_ref share no history, so there is no diff this gate can attest."
 
-# Keyed on both ends of the reviewed diff: a new commit, a rebase, or a
-# different base all produce a stamp that does not exist yet.
-stamp="$gitdir/claude-code-review-$sha-$merge_base"
+# What gets reviewed is the three-dot diff, merge_base..HEAD, so both of those
+# are in the key: a new commit or a rebase moves one end or the other and the
+# stamp will not exist yet. The base tip itself is deliberately not in the key,
+# because main advancing over commits this branch does not touch leaves that
+# diff untouched too, and re-reviewing it would find nothing. The base *ref* is
+# in the key, hashed because it can contain a slash, so that targeting a
+# different branch needs its own review even when the two share a merge base.
+base_key=$(printf '%s' "$base_ref" | git hash-object --stdin 2>/dev/null | cut -c1-12)
+[ -n "$base_key" ] || deny "Could not derive a stamp key for base $base_ref."
+stamp="$gitdir/claude-code-review-$sha-$base_key-$merge_base"
 
 [ -f "$stamp" ] && exit 0
 
