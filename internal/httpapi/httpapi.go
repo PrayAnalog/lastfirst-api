@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,12 @@ import (
 )
 
 const watchChunk = 50
+
+// RequestTimeout bounds the YouTube calls behind one playlist request, up to 41
+// of them in sequence. The handler writes nothing until they finish, so it has
+// to stay under the ingress's proxy-read-timeout in deploy/ingress.yaml, and
+// cmd/server derives the connection write deadline from it.
+const RequestTimeout = 45 * time.Second
 
 // Quota policy: YouTube's default daily API quota is 10,000 units. We only
 // budget 8,000/day for this endpoint, keeping headroom for other usage of
@@ -76,6 +83,9 @@ type playlistView struct {
 }
 
 func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), RequestTimeout)
+	defer cancel()
+
 	if !s.ipLimiter.Allow(clientIP(r)) {
 		writeError(w, http.StatusTooManyRequests, "too many requests, please slow down and try again shortly")
 		return
@@ -94,7 +104,7 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	meta, err := s.yt.FetchPlaylistMeta(r.Context(), id)
+	meta, err := s.yt.FetchPlaylistMeta(ctx, id)
 	switch {
 	case errors.Is(err, youtube.ErrNotFound):
 		writeError(w, http.StatusNotFound, err.Error())
@@ -118,7 +128,7 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, err := s.yt.FetchPlaylistItems(r.Context(), id)
+	items, err := s.yt.FetchPlaylistItems(ctx, id)
 	switch {
 	case errors.Is(err, youtube.ErrQuotaExceeded):
 		writeError(w, http.StatusServiceUnavailable, err.Error())

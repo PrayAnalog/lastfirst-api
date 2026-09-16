@@ -26,6 +26,9 @@ Accepts a playlist URL or a raw playlist ID. Returns the reversed video
 order as a list of `watch_videos` links (chunked to 50 videos each), along
 with source/reverse playlist titles and item counts.
 
+A request's YouTube calls are given 45 seconds in total; one that runs out is
+answered with `500`.
+
 ## Configuration
 
 | Env var | Default | Description |

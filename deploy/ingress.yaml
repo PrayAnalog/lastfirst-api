@@ -4,6 +4,9 @@ metadata:
   name: yt-reverse-playlist
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
+    # Pinned rather than inherited from the controller: httpapi.RequestTimeout
+    # (45s) is sized to answer before nginx gives up waiting on the response.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
 spec:
   ingressClassName: nginx
   tls:
