@@ -25,9 +25,9 @@ semantics, and deployment assumptions unless the request changes them.
 - Never commit or push directly to `main`. Use a dedicated branch named for the
   change type, such as `feat/<topic>`, `fix/<topic>`, or `chore/<topic>`.
 - Preserve unrelated working-tree changes and keep each diff focused.
-- Before the first push or PR for an implementation, run a dedicated code
-  review against the base branch using `.agents/code-review.md` and applicable
-  `.coderabbit.yaml` path instructions.
+- Before the first push or PR for an implementation, work through
+  `.agents/pre-pr-checklist.md` against the branch diff, then run a dedicated
+  code review against the base branch using `.agents/code-review.md`.
 - Verify and fix every actionable correctness, security, reliability, and
   compatibility finding, then rerun required checks.
 - If review fixes materially change behavior, review the updated diff again.
