@@ -28,16 +28,28 @@ comparable without the gap between those events as headroom. Write each wider
 bound as an expression over the narrower one so the ordering cannot drift when
 one value is edited.
 
-## 4. Settle every resource claim on every exit path
+## 4. Claim a metered resource per call, not per prediction
 
-- Reserve before the billable call, never after. A call made in order to size
-  the reservation has already spent the resource.
-- Size the settlement by *attempts made*, not by results returned: a request
-  that failed may still have been billed, and a successful page may return
-  fewer items than its maximum.
-- Account for calls that happen even when the predicted count is zero.
-- Tie the claim to the accounting period it was taken in and ignore a
-  settlement whose period has already rolled over.
+Reserve before the call, never after: a call made in order to size the
+reservation has already spent the resource.
+
+Then ask what sizes the reservation. A count predicted up front has been wrong
+here in every direction — short pages, a playlist that grew mid-request, a
+request billed and then failed, a walk that outlived the daily reset — and each
+was found separately, as its own review round, because each was a different
+way for one guess to be off. Claiming a single unit immediately before each
+call deletes the prediction and the reconciliation that keeps being subtly
+wrong along with it.
+
+Where a claim genuinely has to be made in bulk, size the settlement by attempts
+made rather than results returned, tie it to the accounting period it was taken
+in, and count the calls that still happen when the prediction is zero.
+
+Do not claim for a call that provably cannot happen: a context already done
+means the request never reaches the far side, so it cannot be billed. Do not
+refund on a failure that cannot be told apart from a success that was billed —
+over-charging stops the service early, under-charging spends what the meter is
+there to protect.
 
 ## 5. Check the far side of every boundary the change touches
 
