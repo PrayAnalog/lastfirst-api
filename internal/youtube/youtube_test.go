@@ -17,6 +17,7 @@ func TestAPIKeyTransportUsesHeaderWithoutChangingOriginalRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	stopErr := errors.New("stop")
 	base := roundTripFunc(func(got *http.Request) (*http.Response, error) {
 		if value := got.Header.Get("X-Goog-Api-Key"); value != "secret-key" {
 			t.Fatalf("X-Goog-Api-Key = %q, want secret-key", value)
@@ -24,11 +25,14 @@ func TestAPIKeyTransportUsesHeaderWithoutChangingOriginalRequest(t *testing.T) {
 		if value := got.URL.Query().Get("key"); value != "" {
 			t.Fatalf("URL key = %q, want empty", value)
 		}
-		return nil, errors.New("stop")
+		return nil, stopErr
 	})
 	transport := &apiKeyTransport{apiKey: "secret-key", base: base}
 
-	_, _ = transport.RoundTrip(request)
+	_, err = transport.RoundTrip(request)
+	if !errors.Is(err, stopErr) {
+		t.Fatalf("RoundTrip() error = %v, want %v", err, stopErr)
+	}
 	if value := request.Header.Get("X-Goog-Api-Key"); value != "" {
 		t.Fatalf("original request header = %q, want empty", value)
 	}

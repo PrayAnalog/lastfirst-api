@@ -81,7 +81,10 @@ Before a public launch:
 - Keep `TRUST_PROXY_HEADERS=false` for direct/local deployments. The supplied
   Kubernetes manifest enables it because the ClusterIP service is reached
   through ingress, which owns `X-Real-IP`; do not expose the pod or service
-  directly while that setting is enabled.
+  directly while that setting is enabled. The supplied NetworkPolicy assumes
+  the controller namespace is `ingress-nginx` and uses the standard controller
+  labels; adjust those selectors to the installed controller before applying
+  the manifests if your cluster differs.
 
 Report vulnerabilities through GitHub's private vulnerability reporting flow;
 see [`SECURITY.md`](SECURITY.md).
