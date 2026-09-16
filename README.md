@@ -26,6 +26,10 @@ Accepts a playlist URL or a raw playlist ID. Returns the reversed video
 order as a list of `watch_videos` links (chunked to 50 videos each), along
 with source/reverse playlist titles and item counts.
 
+The request body must be a single JSON object of at most 8 KiB. A larger body
+is answered with `413`, and a body with anything but whitespace after the
+object with `400`.
+
 ## Configuration
 
 | Env var | Default | Description |
