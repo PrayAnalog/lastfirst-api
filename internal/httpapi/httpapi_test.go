@@ -15,16 +15,17 @@ import (
 )
 
 type fakeYouTube struct {
-	mu          sync.Mutex
-	metaCalls   int
-	itemCalls   int
-	meta        *youtube.Playlist
-	items       []youtube.Item
-	pages       int
-	metaErr     error
-	itemsErr    error
-	metaStarted chan struct{}
-	releaseMeta chan struct{}
+	mu           sync.Mutex
+	metaCalls    int
+	itemCalls    int
+	meta         *youtube.Playlist
+	items        []youtube.Item
+	pages        int
+	itemMaxPages int
+	metaErr      error
+	itemsErr     error
+	metaStarted  chan struct{}
+	releaseMeta  chan struct{}
 }
 
 func (f *fakeYouTube) FetchPlaylistMeta(ctx context.Context, _ string) (*youtube.Playlist, error) {
@@ -47,10 +48,11 @@ func (f *fakeYouTube) FetchPlaylistMeta(ctx context.Context, _ string) (*youtube
 	return f.meta, f.metaErr
 }
 
-func (f *fakeYouTube) FetchPlaylistItems(context.Context, string, int) ([]youtube.Item, int, error) {
+func (f *fakeYouTube) FetchPlaylistItems(_ context.Context, _ string, maxPages int) ([]youtube.Item, int, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.itemCalls++
+	f.itemMaxPages = maxPages
 	return f.items, f.pages, f.itemsErr
 }
 
@@ -192,6 +194,32 @@ func TestCreatePlaylistMapsPageLimitToRequestTooLarge(t *testing.T) {
 	recorder := performPlaylistRequest(server, `{"input":"PL123"}`)
 	if recorder.Code != http.StatusRequestEntityTooLarge {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusRequestEntityTooLarge)
+	}
+}
+
+func TestCreatePlaylistAllowsGrowthWithinPlaylistLimit(t *testing.T) {
+	publishedAt := time.Now()
+	yt := &fakeYouTube{
+		meta:  &youtube.Playlist{ID: "PL123", ItemCount: youtube.PageSize},
+		items: []youtube.Item{{VideoID: "video", PublishedAt: &publishedAt}},
+		pages: 2,
+	}
+	server := New(yt, t.TempDir(), false)
+	server.budget = ratelimit.NewDailyBudget(maxPlaylistCost)
+
+	recorder := performPlaylistRequest(server, `{"input":"PL123"}`)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+
+	yt.mu.Lock()
+	if yt.itemMaxPages != maxPlaylistPages {
+		t.Fatalf("max pages = %d, want %d", yt.itemMaxPages, maxPlaylistPages)
+	}
+	yt.mu.Unlock()
+
+	if _, ok := server.budget.Reserve(maxPlaylistCost - 3); !ok { // one metadata call and two item calls
+		t.Fatal("unused item-page reservation capacity was not released")
 	}
 }
 

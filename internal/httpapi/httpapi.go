@@ -30,7 +30,8 @@ const watchChunk = 50
 // single caller from looping requests faster than a person would.
 const (
 	dailyQuotaBudget = 8000
-	maxPlaylistCost  = 41 // 1 + 40 pages = up to 2000 items
+	maxPlaylistPages = 40
+	maxPlaylistCost  = 1 + maxPlaylistPages // metadata + 40 pages = up to 2000 items
 	ipBurst          = 5
 	ipRefill         = time.Minute
 	maxTrackedIPs    = 10000
@@ -167,12 +168,14 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pages := max(int64(1), (meta.ItemCount+youtube.PageSize-1)/youtube.PageSize)
-	cost := int(1 + pages)
-	if cost > maxPlaylistCost {
+	if pages > maxPlaylistPages {
 		writeError(w, http.StatusRequestEntityTooLarge, "playlist too large to process right now")
 		return
 	}
-	itemReservation, ok := s.budget.Reserve(int(pages))
+	// Playlist metadata can be stale while items are being fetched. Reserve the
+	// documented worst case before the first item call, then release unused
+	// capacity through Commit so a playlist may grow within the 2,000-item cap.
+	itemReservation, ok := s.budget.Reserve(maxPlaylistPages)
 	if !ok {
 		w.Header().Set("Retry-After", "3600")
 		writeError(w, http.StatusTooManyRequests, "daily API quota exhausted, try again after quota resets at midnight Pacific Time")
@@ -180,7 +183,7 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	}
 	defer itemReservation.Release()
 
-	items, calls, err := s.yt.FetchPlaylistItems(ctx, id, int(pages))
+	items, calls, err := s.yt.FetchPlaylistItems(ctx, id, maxPlaylistPages)
 	itemReservation.Commit(calls)
 	switch {
 	case errors.Is(err, youtube.ErrQuotaExceeded):
