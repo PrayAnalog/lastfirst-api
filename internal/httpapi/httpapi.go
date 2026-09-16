@@ -35,6 +35,10 @@ const (
 	playlistTooLargeMessage = "playlist too large to process right now"
 )
 
+// errBudgetExhausted travels back out of the YouTube page walk when the daily
+// budget cannot cover the next page request.
+var errBudgetExhausted = errors.New("daily budget exhausted")
+
 // Quota policy: YouTube's default daily API quota is 10,000 units. We only
 // budget 8,000/day for this endpoint, keeping headroom for other usage of
 // the same key (console testing, future features). A request costs
@@ -124,11 +128,11 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), RequestTimeout)
 	defer cancel()
 
-	// Reserved before the call, not after: this call is what sizes the next
-	// reservation, so by the time its result is known the unit is spent. It is
-	// never settled back — a metadata call that failed may still have been
-	// billed, and over-charging by one unit is the safe direction to be wrong.
-	if _, ok := s.budget.Reserve(metaCost); !ok {
+	// Reserved before the call, not after: this call's own result is what says
+	// how big the playlist is, so by the time that is known the unit is already
+	// spent. It is never given back — a metadata call that failed may still
+	// have been billed, and over-charging by one is the safe direction.
+	if !s.budget.Reserve(metaCost) {
 		writeError(w, http.StatusTooManyRequests, quotaExhaustedMessage)
 		return
 	}
@@ -146,26 +150,28 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// An empty playlist still costs one playlistItems.list call.
-	pages := max(int((meta.ItemCount+youtube.PageSize-1)/youtube.PageSize), 1)
-	if pages > maxPlaylistPages {
+	// The item count is a snapshot from the metadata call, so this only refuses
+	// playlists already known to be too large; it is not what keeps the walk
+	// below within budget.
+	if int((meta.ItemCount+youtube.PageSize-1)/youtube.PageSize) > maxPlaylistPages {
 		writeError(w, http.StatusRequestEntityTooLarge, playlistTooLargeMessage)
 		return
 	}
-	reservation, ok := s.budget.Reserve(pages)
-	if !ok {
+
+	// Each page reserves its own unit immediately before the request that
+	// spends it, so a short page or a playlist that grew since the metadata
+	// call cannot bill past what was claimed, and a walk that crosses midnight
+	// charges each request to the day it was actually made in.
+	items, err := s.yt.FetchPlaylistItems(ctx, id, maxPlaylistPages, func() error {
+		if !s.budget.Reserve(1) {
+			return errBudgetExhausted
+		}
+		return nil
+	})
+	switch {
+	case errors.Is(err, errBudgetExhausted):
 		writeError(w, http.StatusTooManyRequests, quotaExhaustedMessage)
 		return
-	}
-
-	// maxPlaylistPages, not the pages just reserved: the item count that sized
-	// the reservation is a snapshot from the metadata call, and a short page or
-	// a playlist that grew since then needs more requests than it predicted.
-	// Settle charges whatever they really cost, and the cap keeps that within
-	// what one request is allowed to spend.
-	items, attempted, err := s.yt.FetchPlaylistItems(ctx, id, maxPlaylistPages)
-	reservation.Settle(attempted)
-	switch {
 	case errors.Is(err, youtube.ErrTooManyPages):
 		writeError(w, http.StatusRequestEntityTooLarge, playlistTooLargeMessage)
 		return

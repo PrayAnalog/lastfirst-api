@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 
 	"google.golang.org/api/option"
@@ -14,12 +15,13 @@ import (
 )
 
 // stubClient answers playlistItems.list with bodies, one per page request, and
-// reports how many requests it received.
-func stubClient(t *testing.T, bodies ...func(w http.ResponseWriter)) (*Client, *int) {
+// appends "request" to log as each arrives.
+func stubClient(t *testing.T, log *[]string, bodies ...func(w http.ResponseWriter)) *Client {
 	t.Helper()
 
 	got := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*log = append(*log, "request")
 		if got >= len(bodies) {
 			t.Errorf("page request %d has no stubbed response", got+1)
 			http.Error(w, "{}", http.StatusInternalServerError)
@@ -35,7 +37,28 @@ func stubClient(t *testing.T, bodies ...func(w http.ResponseWriter)) (*Client, *
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &Client{svc: svc}, &got
+	return &Client{svc: svc}
+}
+
+// granting records a reservation for every page and never refuses.
+func granting(log *[]string) func() error {
+	return func() error {
+		*log = append(*log, "reserve")
+		return nil
+	}
+}
+
+// grantingOnce records reservations but refuses after the first n.
+func grantingOnce(log *[]string, n int, refusal error) func() error {
+	granted := 0
+	return func() error {
+		if granted == n {
+			return refusal
+		}
+		granted++
+		*log = append(*log, "reserve")
+		return nil
+	}
 }
 
 func page(itemCount int, nextPageToken string) func(http.ResponseWriter) {
@@ -65,68 +88,97 @@ func badRequest(w http.ResponseWriter) {
 	io.WriteString(w, `{"error":{"code":400,"message":"invalid"}}`)
 }
 
-// A page that comes back short still cost a page request, so the count of
-// requests made cannot be recovered from the number of items returned.
-func TestFetchPlaylistItemsCountsShortPages(t *testing.T) {
-	c, got := stubClient(t, page(2, "next"), page(1, ""))
+// The unit has to be claimed before the request that spends it, every time —
+// including for the short second page, which the item count cannot predict.
+func TestFetchPlaylistItemsReservesBeforeEveryPageRequest(t *testing.T) {
+	var log []string
+	c := stubClient(t, &log, page(2, "next"), page(1, ""))
 
-	items, attempted, err := c.FetchPlaylistItems(context.Background(), "PL", 10)
+	items, err := c.FetchPlaylistItems(context.Background(), "PL", 10, granting(&log))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(items) != 3 {
 		t.Errorf("collected %d items, want 3", len(items))
 	}
-	if attempted != 2 {
-		t.Errorf("reported %d page requests, want 2 (the server saw %d)", attempted, *got)
-	}
-}
-
-// The request that failed had already gone out, so it counts too.
-func TestFetchPlaylistItemsCountsTheFailedPage(t *testing.T) {
-	c, got := stubClient(t, page(PageSize, "next"), badRequest)
-
-	items, attempted, err := c.FetchPlaylistItems(context.Background(), "PL", 10)
-	if err == nil {
-		t.Fatal("a failing page request returned no error")
-	}
-	if len(items) != PageSize {
-		t.Errorf("collected %d items, want the %d gathered before the failure", len(items), PageSize)
-	}
-	if attempted != 2 {
-		t.Errorf("reported %d page requests, want 2 (the server saw %d)", attempted, *got)
+	want := []string{"reserve", "request", "reserve", "request"}
+	if !slices.Equal(log, want) {
+		t.Errorf("sequence %v, want %v", log, want)
 	}
 }
 
 // An empty playlist still costs the one request that reports it empty.
-func TestFetchPlaylistItemsCountsTheRequestForAnEmptyPlaylist(t *testing.T) {
-	c, _ := stubClient(t, page(0, ""))
+func TestFetchPlaylistItemsReservesForAnEmptyPlaylist(t *testing.T) {
+	var log []string
+	c := stubClient(t, &log, page(0, ""))
 
-	items, attempted, err := c.FetchPlaylistItems(context.Background(), "PL", 10)
+	items, err := c.FetchPlaylistItems(context.Background(), "PL", 10, granting(&log))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(items) != 0 {
 		t.Errorf("collected %d items, want 0", len(items))
 	}
-	if attempted != 1 {
-		t.Errorf("reported %d page requests, want 1", attempted)
+	want := []string{"reserve", "request"}
+	if !slices.Equal(log, want) {
+		t.Errorf("sequence %v, want %v", log, want)
 	}
 }
 
-// A playlist that keeps handing back a next-page token is stopped at maxPages
-// rather than allowed to spend the whole daily budget on one request.
-func TestFetchPlaylistItemsStopsAtMaxPages(t *testing.T) {
-	c, _ := stubClient(t, page(PageSize, "next"), page(PageSize, "next"), page(PageSize, "next"))
+// A refused reservation stops the walk before the request it would have paid
+// for, and comes back as the refusal the caller gave.
+func TestFetchPlaylistItemsStopsWhenAPageCannotBeReserved(t *testing.T) {
+	refusal := errors.New("budget exhausted")
+	var log []string
+	c := stubClient(t, &log, page(PageSize, "next"))
 
-	items, attempted, err := c.FetchPlaylistItems(context.Background(), "PL", 2)
+	items, err := c.FetchPlaylistItems(context.Background(), "PL", 10, grantingOnce(&log, 1, refusal))
+	if !errors.Is(err, refusal) {
+		t.Fatalf("error %v, want the caller's refusal", err)
+	}
+	if len(items) != PageSize {
+		t.Errorf("collected %d items, want the %d from the page that was paid for", len(items), PageSize)
+	}
+	want := []string{"reserve", "request"}
+	if !slices.Equal(log, want) {
+		t.Errorf("sequence %v, want %v — the unreserved page must not be requested", log, want)
+	}
+}
+
+// The cap stops the walk without reserving a unit for a request it will not
+// make.
+func TestFetchPlaylistItemsStopsAtMaxPages(t *testing.T) {
+	var log []string
+	c := stubClient(t, &log, page(PageSize, "next"), page(PageSize, "next"))
+
+	items, err := c.FetchPlaylistItems(context.Background(), "PL", 2, granting(&log))
 	if !errors.Is(err, ErrTooManyPages) {
 		t.Fatalf("error %v, want ErrTooManyPages", err)
 	}
-	if attempted != 2 {
-		t.Errorf("made %d page requests, want to stop at the 2 allowed", attempted)
-	}
 	if len(items) != 2*PageSize {
 		t.Errorf("collected %d items, want the %d from the 2 pages read", len(items), 2*PageSize)
+	}
+	want := []string{"reserve", "request", "reserve", "request"}
+	if !slices.Equal(log, want) {
+		t.Errorf("sequence %v, want %v", log, want)
+	}
+}
+
+// A page request that failed had already gone out, so the unit it reserved
+// stays spent rather than coming back.
+func TestFetchPlaylistItemsKeepsTheUnitForAFailedPage(t *testing.T) {
+	var log []string
+	c := stubClient(t, &log, page(PageSize, "next"), badRequest)
+
+	items, err := c.FetchPlaylistItems(context.Background(), "PL", 10, granting(&log))
+	if err == nil {
+		t.Fatal("a failing page request returned no error")
+	}
+	if len(items) != PageSize {
+		t.Errorf("collected %d items, want the %d gathered before the failure", len(items), PageSize)
+	}
+	want := []string{"reserve", "request", "reserve", "request"}
+	if !slices.Equal(log, want) {
+		t.Errorf("sequence %v, want %v", log, want)
 	}
 }

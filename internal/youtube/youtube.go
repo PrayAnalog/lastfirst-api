@@ -62,24 +62,28 @@ func (c *Client) FetchPlaylistMeta(ctx context.Context, id string) (*Playlist, e
 	return &Playlist{ID: id, Title: it.Snippet.Title, ChannelTitle: it.Snippet.ChannelTitle, ItemCount: it.ContentDetails.ItemCount}, nil
 }
 
-// FetchPlaylistItems costs one quota unit per page request, which is one
-// request per PageSize items plus however many short pages the API decides to
-// return. It makes at most maxPages of them and reports how many it made,
-// counting a failed one: that request may still have reached YouTube and been
-// billed. Items gathered before a failure come back alongside the error, so a
-// caller that gave up early still knows what its reservation bought. A
-// playlist with more pages than maxPages ends in ErrTooManyPages rather than
-// a silently short answer, since a reversal missing its oldest videos is the
-// wrong answer rather than a partial one.
-func (c *Client) FetchPlaylistItems(ctx context.Context, id string, maxPages int) ([]Item, int, error) {
+// FetchPlaylistItems walks the playlist a page request at a time, making at
+// most maxPages of them. Each request costs one quota unit, so reserve is
+// called immediately before every one and the walk stops with reserve's own
+// error when it refuses: no page request is issued without a unit already
+// claimed for it, in whatever accounting period the request is made in. Items
+// gathered so far come back alongside any error, and a playlist that outruns
+// maxPages ends in ErrTooManyPages rather than a silently short answer, since
+// a reversal missing its oldest videos is the wrong answer rather than a
+// partial one.
+func (c *Client) FetchPlaylistItems(ctx context.Context, id string, maxPages int, reserve func() error) ([]Item, error) {
 	call := c.svc.PlaylistItems.List([]string{"snippet", "contentDetails"}).PlaylistId(id).MaxResults(PageSize).Context(ctx)
 	var items []Item
-	pages := 0
-	for {
-		pages++
+	for pages := 0; ; pages++ {
+		if pages == maxPages {
+			return items, ErrTooManyPages
+		}
+		if err := reserve(); err != nil {
+			return items, err
+		}
 		page, err := call.Do()
 		if err != nil {
-			return items, pages, apiErr(err)
+			return items, apiErr(err)
 		}
 		for _, it := range page.Items {
 			item := Item{VideoID: it.ContentDetails.VideoId, Title: it.Snippet.Title}
@@ -89,10 +93,7 @@ func (c *Client) FetchPlaylistItems(ctx context.Context, id string, maxPages int
 			items = append(items, item)
 		}
 		if page.NextPageToken == "" {
-			return items, pages, nil
-		}
-		if pages >= maxPages {
-			return items, pages, ErrTooManyPages
+			return items, nil
 		}
 		call.PageToken(page.NextPageToken)
 	}
