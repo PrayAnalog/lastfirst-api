@@ -44,7 +44,7 @@ deterministic test for each invariant the change establishes when one is
 practical, and confirm the test fails without the fix. Then run:
 
 ```bash
-gofmt -l . && git diff --check && go vet ./... && go build ./... && go test ./...
+test -z "$(gofmt -l .)" && git diff --check && go vet ./... && go build ./... && go test ./...
 ```
 
 plus `go test -race ./...` for shared state, goroutines, cancellation or
@@ -82,17 +82,17 @@ not `main`; comment `@coderabbitai review` on those.
 Wait for both bots on the current head, without polling by hand:
 
 ```bash
-until .claude/skills/ship-change/review-state.sh <pr> | grep -Eq '^verdict: (findings|unapproved|quiet)'; do sleep 60; done
+until .claude/skills/ship-change/review-state.sh <pr> | grep -Eq '^verdict: (findings|blocked|unapproved|quiet)'; do sleep 60; done
 .claude/skills/ship-change/review-state.sh <pr>
 ```
 
 Run the loop in the background (Monitor) and move on to another PR meanwhile.
-If the script reports a bot paused, skipped or out of usage, post the comment
-it names.
+On `verdict: blocked`, post the comment the script names for the blocked bot
+and start waiting again.
 
 For each open finding, read the code it points at and decide:
 
-- **Valid** — fix it in its own commit whose message names the defect. Re-run
+- **Valid** — fix it in a commit whose message names each defect it fixes. Re-run
   step 3 and the checklist over the new diff before pushing.
 - **Not valid, or not fixable in this repository** — decline with repository
   evidence: file and line, doc quote, or a reproduction. A finding that needs
