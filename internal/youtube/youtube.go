@@ -16,6 +16,7 @@ var (
 	ErrNotFound         = errors.New("playlist not found or private")
 	ErrQuotaExceeded    = errors.New("YouTube API quota exceeded, try again later")
 	ErrPageLimitReached = errors.New("playlist grew beyond the allowed size while it was being fetched")
+	ErrPageNotReserved  = errors.New("playlist page was not reserved")
 )
 
 const ReverseTitlePrefix = "[Reversed] "
@@ -81,19 +82,30 @@ func (c *Client) FetchPlaylistMeta(ctx context.Context, id string) (*Playlist, e
 	return &Playlist{ID: id, Title: it.Snippet.Title, ChannelTitle: it.Snippet.ChannelTitle, ItemCount: it.ContentDetails.ItemCount}, nil
 }
 
-// FetchPlaylistItems costs one quota unit per page. The returned call count
-// includes a failed attempted page so the caller can account conservatively.
-func (c *Client) FetchPlaylistItems(ctx context.Context, id string, maxPages int) ([]Item, int, error) {
+// FetchPlaylistItems costs one quota unit per page. beforePage must reserve the
+// next page before its request begins. The returned call count includes a
+// failed attempted page so the caller can account conservatively.
+func (c *Client) FetchPlaylistItems(ctx context.Context, id string, maxPages int, beforePage func() (func(), error)) ([]Item, int, error) {
 	var items []Item
 	pageToken := ""
 	calls := 0
 	for {
+		if calls >= maxPages {
+			return nil, calls, ErrPageLimitReached
+		}
+		complete, err := beforePage()
+		if err != nil {
+			return nil, calls, err
+		}
 		call := c.svc.PlaylistItems.List([]string{"snippet", "contentDetails"}).PlaylistId(id).MaxResults(PageSize)
 		if pageToken != "" {
 			call = call.PageToken(pageToken)
 		}
 		calls++
-		page, err := call.Context(ctx).Do()
+		page, err := func() (*yt.PlaylistItemListResponse, error) {
+			defer complete()
+			return call.Context(ctx).Do()
+		}()
 		if err != nil {
 			return nil, calls, apiErr(err)
 		}
@@ -106,9 +118,6 @@ func (c *Client) FetchPlaylistItems(ctx context.Context, id string, maxPages int
 		}
 		if page.NextPageToken == "" {
 			return items, calls, nil
-		}
-		if calls >= maxPages {
-			return nil, calls, ErrPageLimitReached
 		}
 		pageToken = page.NextPageToken
 	}

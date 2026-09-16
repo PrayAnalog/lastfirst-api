@@ -48,12 +48,23 @@ func (f *fakeYouTube) FetchPlaylistMeta(ctx context.Context, _ string) (*youtube
 	return f.meta, f.metaErr
 }
 
-func (f *fakeYouTube) FetchPlaylistItems(_ context.Context, _ string, maxPages int) ([]youtube.Item, int, error) {
+func (f *fakeYouTube) FetchPlaylistItems(_ context.Context, _ string, maxPages int, beforePage func() (func(), error)) ([]youtube.Item, int, error) {
 	f.mu.Lock()
-	defer f.mu.Unlock()
 	f.itemCalls++
 	f.itemMaxPages = maxPages
-	return f.items, f.pages, f.itemsErr
+	pages := f.pages
+	items := f.items
+	err := f.itemsErr
+	f.mu.Unlock()
+
+	for page := 0; page < pages; page++ {
+		complete, reserveErr := beforePage()
+		if reserveErr != nil {
+			return nil, page, reserveErr
+		}
+		complete()
+	}
+	return items, pages, err
 }
 
 func (f *fakeYouTube) calls() (int, int) {
@@ -205,7 +216,7 @@ func TestCreatePlaylistAllowsGrowthWithinPlaylistLimit(t *testing.T) {
 		pages: 2,
 	}
 	server := New(yt, t.TempDir(), false)
-	server.budget = ratelimit.NewDailyBudget(maxPlaylistCost)
+	server.budget = ratelimit.NewDailyBudget(3)
 
 	recorder := performPlaylistRequest(server, `{"input":"PL123"}`)
 	if recorder.Code != http.StatusOK {
@@ -218,8 +229,8 @@ func TestCreatePlaylistAllowsGrowthWithinPlaylistLimit(t *testing.T) {
 	}
 	yt.mu.Unlock()
 
-	if _, ok := server.budget.Reserve(maxPlaylistCost - 3); !ok { // one metadata call and two item calls
-		t.Fatal("unused item-page reservation capacity was not released")
+	if _, ok := server.budget.Reserve(1); ok { // one metadata call and two item calls
+		t.Fatal("quota accounting did not include the grown playlist page")
 	}
 }
 

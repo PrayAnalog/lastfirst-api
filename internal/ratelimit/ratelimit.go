@@ -125,17 +125,32 @@ func (b *DailyBudget) Reserve(cost int) (*Reservation, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	now := time.Now()
-	if !now.Before(b.resetAt) {
-		b.used = 0
-		b.resetAt = nextPacificMidnight(now)
-		b.period++
-	}
+	b.resetIfNeeded(time.Now())
 	if cost <= 0 || b.used > b.limit-cost {
 		return nil, false
 	}
 	b.used += cost
 	return &Reservation{budget: b, cost: cost, period: b.period}, true
+}
+
+// RetryAfterSeconds returns the number of seconds until the current quota
+// period resets. It is suitable for an HTTP Retry-After response header.
+func (b *DailyBudget) RetryAfterSeconds() int {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	now := time.Now()
+	b.resetIfNeeded(now)
+	delay := b.resetAt.Sub(now)
+	return max(1, int((delay+time.Second-1)/time.Second))
+}
+
+func (b *DailyBudget) resetIfNeeded(now time.Time) {
+	if !now.Before(b.resetAt) {
+		b.used = 0
+		b.resetAt = nextPacificMidnight(now)
+		b.period++
+	}
 }
 
 // Commit records actualCost units as spent and releases the unused portion of

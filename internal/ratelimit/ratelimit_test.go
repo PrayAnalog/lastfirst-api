@@ -35,6 +35,18 @@ func TestReservationReleaseReturnsCapacity(t *testing.T) {
 	}
 }
 
+func TestDailyBudgetRetryAfterUsesResetTime(t *testing.T) {
+	budget := NewDailyBudget(1)
+	budget.mu.Lock()
+	budget.resetAt = time.Now().Add(time.Hour)
+	budget.mu.Unlock()
+
+	seconds := budget.RetryAfterSeconds()
+	if seconds < 3599 || seconds > 3600 {
+		t.Fatalf("RetryAfterSeconds() = %d, want about 3600", seconds)
+	}
+}
+
 func TestIPLimiterEvictsLeastRecentlyUsedAddressAtBound(t *testing.T) {
 	limiter := NewIPLimiter(1, time.Hour, 2)
 	if !limiter.Allow("192.0.2.1") || !limiter.Allow("192.0.2.2") {
