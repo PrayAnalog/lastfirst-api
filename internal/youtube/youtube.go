@@ -66,17 +66,21 @@ func (c *Client) FetchPlaylistMeta(ctx context.Context, id string) (*Playlist, e
 // most maxPages of them. Each request costs one quota unit, so reserve is
 // called immediately before every one and the walk stops with reserve's own
 // error when it refuses: no page request is issued without a unit already
-// claimed for it, in whatever accounting period the request is made in. Items
-// gathered so far come back alongside any error, and a playlist that outruns
-// maxPages ends in ErrTooManyPages rather than a silently short answer, since
-// a reversal missing its oldest videos is the wrong answer rather than a
-// partial one.
+// claimed for it, in whatever accounting period the request is made in. A
+// context that is already done ends the walk before reserving, since that
+// request cannot reach YouTube and so cannot be billed. Items gathered so far
+// come back alongside any error, and a playlist that outruns maxPages ends in
+// ErrTooManyPages rather than a silently short answer, since a reversal
+// missing its oldest videos is the wrong answer rather than a partial one.
 func (c *Client) FetchPlaylistItems(ctx context.Context, id string, maxPages int, reserve func() error) ([]Item, error) {
 	call := c.svc.PlaylistItems.List([]string{"snippet", "contentDetails"}).PlaylistId(id).MaxResults(PageSize).Context(ctx)
 	var items []Item
 	for pages := 0; ; pages++ {
 		if pages == maxPages {
 			return items, ErrTooManyPages
+		}
+		if err := ctx.Err(); err != nil {
+			return items, err
 		}
 		if err := reserve(); err != nil {
 			return items, err

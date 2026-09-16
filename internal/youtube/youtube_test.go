@@ -16,7 +16,7 @@ import (
 
 // stubClient answers playlistItems.list with bodies, one per page request, and
 // appends "request" to log as each arrives.
-func stubClient(t *testing.T, log *[]string, bodies ...func(w http.ResponseWriter)) *Client {
+func stubClient(t *testing.T, log *[]string, bodies ...func(w http.ResponseWriter) error) *Client {
 	t.Helper()
 
 	got := 0
@@ -29,7 +29,9 @@ func stubClient(t *testing.T, log *[]string, bodies ...func(w http.ResponseWrite
 		}
 		body := bodies[got]
 		got++
-		body(w)
+		if err := body(w); err != nil {
+			t.Errorf("writing the stubbed response for page request %d: %v", got, err)
+		}
 	}))
 	t.Cleanup(srv.Close)
 
@@ -61,7 +63,7 @@ func grantingOnce(log *[]string, n int, refusal error) func() error {
 	}
 }
 
-func page(itemCount int, nextPageToken string) func(http.ResponseWriter) {
+func page(itemCount int, nextPageToken string) func(http.ResponseWriter) error {
 	res := yt.PlaylistItemListResponse{NextPageToken: nextPageToken}
 	for range itemCount {
 		res.Items = append(res.Items, &yt.PlaylistItem{
@@ -76,16 +78,18 @@ func page(itemCount int, nextPageToken string) func(http.ResponseWriter) {
 	if err != nil {
 		panic(err)
 	}
-	return func(w http.ResponseWriter) {
+	return func(w http.ResponseWriter) error {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write(body)
+		_, err := w.Write(body)
+		return err
 	}
 }
 
-func badRequest(w http.ResponseWriter) {
+func badRequest(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)
-	io.WriteString(w, `{"error":{"code":400,"message":"invalid"}}`)
+	_, err := io.WriteString(w, `{"error":{"code":400,"message":"invalid"}}`)
+	return err
 }
 
 // The unit has to be claimed before the request that spends it, every time —
@@ -180,5 +184,25 @@ func TestFetchPlaylistItemsKeepsTheUnitForAFailedPage(t *testing.T) {
 	want := []string{"reserve", "request", "reserve", "request"}
 	if !slices.Equal(log, want) {
 		t.Errorf("sequence %v, want %v", log, want)
+	}
+}
+
+// A context that is already done cannot reach YouTube, so nothing is reserved
+// for it and no request goes out.
+func TestFetchPlaylistItemsReservesNothingForADoneContext(t *testing.T) {
+	var log []string
+	c := stubClient(t, &log, page(PageSize, ""))
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	items, err := c.FetchPlaylistItems(ctx, "PL", 10, granting(&log))
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error %v, want context.Canceled", err)
+	}
+	if len(items) != 0 {
+		t.Errorf("collected %d items, want 0", len(items))
+	}
+	if len(log) != 0 {
+		t.Errorf("sequence %v, want nothing reserved and nothing requested", log)
 	}
 }

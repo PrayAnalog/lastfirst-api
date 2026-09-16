@@ -128,6 +128,13 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), RequestTimeout)
 	defer cancel()
 
+	// The client hung up while the body was being read, so nothing below can
+	// reach YouTube and a unit taken for it would be charged against usage that
+	// never happens.
+	if ctx.Err() != nil {
+		return
+	}
+
 	// Reserved before the call, not after: this call's own result is what says
 	// how big the playlist is, so by the time that is known the unit is already
 	// spent. It is never given back — a metadata call that failed may still
