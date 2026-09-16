@@ -31,6 +31,12 @@ func TestCreatePlaylistRequestBody(t *testing.T) {
 			wantError:  "request body too large",
 		},
 		{
+			name:       "second JSON value followed by data past the limit",
+			body:       `{"input":"x"}{}` + strings.Repeat(" ", maxRequestBodyBytes),
+			wantStatus: http.StatusRequestEntityTooLarge,
+			wantError:  "request body too large",
+		},
+		{
 			name:       "second JSON value after the object",
 			body:       `{"input":"x"}{"input":"y"}`,
 			wantStatus: http.StatusBadRequest,

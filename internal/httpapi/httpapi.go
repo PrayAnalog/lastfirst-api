@@ -84,24 +84,16 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBodyBytes)
-	var req struct {
-		Input string `json:"input"`
-	}
-	dec := json.NewDecoder(r.Body)
-	err := dec.Decode(&req)
-	if err == nil {
-		// Decode stops at the end of the first JSON value, so anything after it
-		// would otherwise be accepted unread, however far past the limit it runs.
-		if err = dec.Decode(new(json.RawMessage)); errors.Is(err, io.EOF) {
-			err = nil
-		} else if err == nil {
-			err = errors.New("unexpected data after the request object")
-		}
-	}
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxRequestBodyBytes))
 	if maxErr := new(http.MaxBytesError); errors.As(err, &maxErr) {
 		writeError(w, http.StatusRequestEntityTooLarge, "request body too large")
 		return
+	}
+	var req struct {
+		Input string `json:"input"`
+	}
+	if err == nil {
+		err = json.Unmarshal(body, &req)
 	}
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
