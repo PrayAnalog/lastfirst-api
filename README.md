@@ -26,6 +26,12 @@ Accepts a playlist URL or a raw playlist ID. Returns the reversed video
 order as a list of `watch_videos` links (chunked to 50 videos each), along
 with source/reverse playlist titles and item counts.
 
+`GET /healthz`
+
+Returns an empty `200` while the process is serving HTTP. The Kubernetes
+readiness and liveness probes in [`deploy/deployment.yaml`](deploy/deployment.yaml)
+use it.
+
 ## Configuration
 
 | Env var | Default | Description |

@@ -51,6 +51,7 @@ func New(yt *youtube.Client, staticDir string) *Server {
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
+	mux.HandleFunc("GET /healthz", func(http.ResponseWriter, *http.Request) {})
 	mux.HandleFunc("POST /api/playlists", s.createPlaylist)
 	mux.Handle("/", s.spa())
 	return mux
