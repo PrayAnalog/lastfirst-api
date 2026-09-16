@@ -4,6 +4,13 @@ metadata:
   name: yt-reverse-playlist
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
+    # Keep this above the app's 8 KiB limit so API clients receive its JSON 413.
+    nginx.ingress.kubernetes.io/proxy-body-size: "16k"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "5"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "140"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "140"
 spec:
   ingressClassName: nginx
   tls:

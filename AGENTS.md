@@ -20,6 +20,10 @@ Trace behavioral changes through callers and relevant deployment configuration.
 Preserve HTTP status and JSON shape, configuration names and defaults, quota
 semantics, and deployment assumptions unless the request changes them.
 
+Before changing a production flow, state its invariants and trace every state
+transition across the owning packages and deployment boundary. Include races
+between independently triggered events, not only the intended success path.
+
 ## Workflow
 
 - Never commit or push directly to `main`. Use a dedicated branch named for the
@@ -45,11 +49,18 @@ semantics, and deployment assumptions unless the request changes them.
   context only for cleanup that must outlive request or signal cancellation.
 - Guard mutable state reached by concurrent handlers and give every goroutine or
   acquired resource an explicit owner and termination path.
-- Reserve quota before a billable call; commit or release the reservation on
-  every exit path, including partial failure.
+- Reserve quota before each billable call. Count attempted calls at the API
+  boundary instead of inferring them from returned data; settle unused capacity
+  on every exit path, and never release an old-period reservation into a new
+  quota period.
 - Configure HTTP server and client timeouts deliberately. For lifecycle changes,
   inspect the app, probes, `Dockerfile`, and Kubernetes manifests together;
-  drain in-flight requests within the termination grace period.
+  stop routing before closing the listener, wait for both the listener and
+  in-flight handlers, and fit pre-stop plus shutdown inside the termination
+  grace period.
+- Fully consume and validate bounded request bodies before starting expensive
+  or billable work; a successful first decode alone does not prove the body is
+  within its limit or contains only one value.
 - Return stable client errors and keep diagnostic context in logs. Never expose
   secrets, stack traces, raw internal errors, API keys, or sensitive upstream
   responses.
@@ -60,6 +71,9 @@ semantics, and deployment assumptions unless the request changes them.
 
 - Test externally visible behavior and production invariants. Add a deterministic
   regression test for a bug when practical.
+- Exercise adversarial interleavings relevant to the change, such as signal vs.
+  listener failure, quota reset vs. reservation release, partial upstream
+  failure, and upstream data growing or shrinking between calls.
 - Run `gofmt` on changed Go files and `git diff --check` for every change.
 - For Go changes, run targeted package tests while iterating, then before handoff:
   `go test ./...`, `go vet ./...`, and `go build ./...`.

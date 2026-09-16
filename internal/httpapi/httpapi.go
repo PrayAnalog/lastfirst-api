@@ -1,14 +1,17 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,37 +26,59 @@ const watchChunk = 50
 // budget 8,000/day for this endpoint, keeping headroom for other usage of
 // the same key (console testing, future features). A request costs
 // 1 unit (playlist metadata) + 1 unit per PageSize items fetched; a single
-// playlist is capped at maxPlaylistCost so no one request can eat the
+// playlist is capped at maxPlaylistPages so no one request can eat the
 // whole day's budget. The per-IP limiter (5 burst, 1/min refill) stops a
 // single caller from looping requests faster than a person would.
 const (
 	dailyQuotaBudget = 8000
-	maxPlaylistCost  = 41 // 1 + 40 pages = up to 2000 items
+	maxPlaylistPages = 40
 	ipBurst          = 5
 	ipRefill         = time.Minute
+	maxTrackedIPs    = 10000
+	maxRequestBody   = 8 << 10
+	maxConcurrent    = 8
 )
 
-type Server struct {
-	yt        *youtube.Client
-	staticDir string
-	ipLimiter *ratelimit.IPLimiter
-	budget    *ratelimit.DailyBudget
+// RequestTimeout bounds all YouTube work performed for one HTTP request.
+const RequestTimeout = 2 * time.Minute
+
+type youtubeClient interface {
+	FetchPlaylistMeta(context.Context, string) (*youtube.Playlist, error)
+	FetchPlaylistItems(context.Context, string, int, func() (func(), error)) ([]youtube.Item, int, error)
 }
 
-func New(yt *youtube.Client, staticDir string) *Server {
+type Server struct {
+	yt                youtubeClient
+	staticDir         string
+	trustProxyHeaders bool
+	ipLimiter         *ratelimit.IPLimiter
+	budget            *ratelimit.DailyBudget
+	slots             chan struct{}
+}
+
+func New(yt youtubeClient, staticDir string, trustProxyHeaders bool) *Server {
 	return &Server{
-		yt:        yt,
-		staticDir: staticDir,
-		ipLimiter: ratelimit.NewIPLimiter(ipBurst, ipRefill),
-		budget:    ratelimit.NewDailyBudget(dailyQuotaBudget),
+		yt:                yt,
+		staticDir:         staticDir,
+		trustProxyHeaders: trustProxyHeaders,
+		ipLimiter:         ratelimit.NewIPLimiter(ipBurst, ipRefill, maxTrackedIPs),
+		budget:            ratelimit.NewDailyBudget(dailyQuotaBudget),
+		slots:             make(chan struct{}, maxConcurrent),
 	}
 }
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/playlists", s.createPlaylist)
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte("ok\n")); err != nil {
+			log.Printf("write healthz response: %v", err)
+		}
+	})
 	mux.Handle("/", s.spa())
-	return mux
+	return securityHeaders(mux)
 }
 
 type watchLink struct {
@@ -76,7 +101,8 @@ type playlistView struct {
 }
 
 func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
-	if !s.ipLimiter.Allow(clientIP(r)) {
+	if !s.ipLimiter.Allow(clientIP(r, s.trustProxyHeaders)) {
+		w.Header().Set("Retry-After", "60")
 		writeError(w, http.StatusTooManyRequests, "too many requests, please slow down and try again shortly")
 		return
 	}
@@ -84,7 +110,23 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Input string `json:"input"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, maxRequestBody)
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&req); err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			writeError(w, http.StatusRequestEntityTooLarge, "request body too large")
+			return
+		}
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			writeError(w, http.StatusRequestEntityTooLarge, "request body too large")
+			return
+		}
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -94,7 +136,26 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	meta, err := s.yt.FetchPlaylistMeta(r.Context(), id)
+	select {
+	case s.slots <- struct{}{}:
+		defer func() { <-s.slots }()
+	default:
+		w.Header().Set("Retry-After", "1")
+		writeError(w, http.StatusServiceUnavailable, "service busy, please try again shortly")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), RequestTimeout)
+	defer cancel()
+
+	metaReservation, ok := s.budget.Reserve(1)
+	if !ok {
+		s.quotaExhausted(w)
+		return
+	}
+	defer metaReservation.Release()
+	meta, err := s.yt.FetchPlaylistMeta(ctx, id)
+	metaReservation.Commit(1)
 	switch {
 	case errors.Is(err, youtube.ErrNotFound):
 		writeError(w, http.StatusNotFound, err.Error())
@@ -103,28 +164,45 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, err.Error())
 		return
 	case err != nil:
-		serverError(w, err)
+		upstreamError(w, err)
 		return
 	}
 
-	pages := (meta.ItemCount + youtube.PageSize - 1) / youtube.PageSize
-	cost := int(1 + pages)
-	if cost > maxPlaylistCost {
+	pages := max(int64(1), (meta.ItemCount+youtube.PageSize-1)/youtube.PageSize)
+	if pages > maxPlaylistPages {
 		writeError(w, http.StatusRequestEntityTooLarge, "playlist too large to process right now")
 		return
 	}
-	if !s.budget.Reserve(cost) {
-		writeError(w, http.StatusTooManyRequests, "daily API quota exhausted, try again after quota resets at midnight Pacific Time")
+	itemReservation, ok := s.budget.Reserve(int(pages))
+	if !ok {
+		s.quotaExhausted(w)
 		return
 	}
+	defer itemReservation.Release()
 
-	items, err := s.yt.FetchPlaylistItems(r.Context(), id)
+	items, calls, err := s.yt.FetchPlaylistItems(ctx, id, maxPlaylistPages, func() (func(), error) {
+		if itemReservation.Use(1) {
+			return func() {}, nil
+		}
+		extraReservation, ok := s.budget.Reserve(1)
+		if !ok {
+			return nil, youtube.ErrPageNotReserved
+		}
+		return func() { extraReservation.Commit(1) }, nil
+	})
+	itemReservation.Commit(min(calls, int(pages)))
 	switch {
 	case errors.Is(err, youtube.ErrQuotaExceeded):
 		writeError(w, http.StatusServiceUnavailable, err.Error())
 		return
+	case errors.Is(err, youtube.ErrPageLimitReached):
+		writeError(w, http.StatusRequestEntityTooLarge, "playlist too large to process right now")
+		return
+	case errors.Is(err, youtube.ErrPageNotReserved):
+		s.quotaExhausted(w)
+		return
 	case err != nil:
-		serverError(w, err)
+		upstreamError(w, err)
 		return
 	}
 
@@ -142,12 +220,13 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// clientIP prefers X-Forwarded-For's first entry, since the service sits
-// behind a reverse proxy/ingress in deployment; it falls back to the raw
-// connection address for local/direct use.
-func clientIP(r *http.Request) string {
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		return strings.TrimSpace(strings.Split(fwd, ",")[0])
+// clientIP only accepts the ingress-controlled single-value header when the
+// deployment explicitly opts into trusting its reverse proxy.
+func clientIP(r *http.Request, trustProxyHeaders bool) string {
+	if trustProxyHeaders {
+		if forwarded := net.ParseIP(strings.TrimSpace(r.Header.Get("X-Real-IP"))); forwarded != nil {
+			return forwarded.String()
+		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -195,12 +274,39 @@ func serverError(w http.ResponseWriter, err error) {
 	writeError(w, http.StatusInternalServerError, "internal error")
 }
 
+func upstreamError(w http.ResponseWriter, err error) {
+	if errors.Is(err, context.DeadlineExceeded) {
+		writeError(w, http.StatusGatewayTimeout, "upstream request timed out")
+		return
+	}
+	serverError(w, err)
+}
+
+func (s *Server) quotaExhausted(w http.ResponseWriter) {
+	w.Header().Set("Retry-After", strconv.Itoa(s.budget.RetryAfterSeconds()))
+	writeError(w, http.StatusTooManyRequests, "daily API quota exhausted, try again after quota resets at midnight Pacific Time")
+}
+
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		log.Printf("write JSON response: %v", err)
+	}
+}
+
+func securityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; img-src 'self' https://i.ytimg.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		next.ServeHTTP(w, r)
+	})
 }
