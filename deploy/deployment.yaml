@@ -12,6 +12,9 @@ spec:
       labels:
         app: yt-reverse-playlist
     spec:
+      # preStop (5s) + shutdownTimeout in cmd/server/main.go (55s), with room
+      # left before the kubelet's SIGKILL.
+      terminationGracePeriodSeconds: 65
       containers:
         - name: backend
           image: registry.digitalocean.com/lastfirst/backend:v1
@@ -24,3 +27,10 @@ spec:
                 secretKeyRef:
                   name: yt-api-key
                   key: YT_API_KEY
+          lifecycle:
+            # Keeps serving while the pod's removal from the Service endpoints
+            # reaches kube-proxy and the ingress; SIGTERM, and with it the
+            # closed listener, comes only after this returns.
+            preStop:
+              exec:
+                command: ["sleep", "5"]
