@@ -13,6 +13,7 @@ import (
 var (
 	ErrNotFound      = errors.New("playlist not found or private")
 	ErrQuotaExceeded = errors.New("YouTube API quota exceeded, try again later")
+	ErrTooManyPages  = errors.New("playlist needs more page requests than allowed")
 )
 
 const ReverseTitlePrefix = "[Reversed] "
@@ -61,11 +62,31 @@ func (c *Client) FetchPlaylistMeta(ctx context.Context, id string) (*Playlist, e
 	return &Playlist{ID: id, Title: it.Snippet.Title, ChannelTitle: it.Snippet.ChannelTitle, ItemCount: it.ContentDetails.ItemCount}, nil
 }
 
-// FetchPlaylistItems costs one quota unit per PageSize items.
-func (c *Client) FetchPlaylistItems(ctx context.Context, id string) ([]Item, error) {
+// FetchPlaylistItems walks the playlist one page request at a time, making at
+// most maxPages of them. Each request costs one quota unit, so reserve is
+// called immediately before every one, and the walk stops with reserve's own
+// error when it refuses: no page request goes out without a unit already
+// claimed for it, in whichever accounting period it is made. A context that is
+// already done ends the walk before reserving, since that request cannot reach
+// YouTube. A playlist that needs more than maxPages requests ends in
+// ErrTooManyPages rather than a silently truncated answer.
+func (c *Client) FetchPlaylistItems(ctx context.Context, id string, maxPages int, reserve func() error) ([]Item, error) {
+	call := c.svc.PlaylistItems.List([]string{"snippet", "contentDetails"}).PlaylistId(id).MaxResults(PageSize).Context(ctx)
 	var items []Item
-	call := c.svc.PlaylistItems.List([]string{"snippet", "contentDetails"}).PlaylistId(id).MaxResults(PageSize)
-	err := call.Pages(ctx, func(page *yt.PlaylistItemListResponse) error {
+	for pages := 0; ; pages++ {
+		if pages == maxPages {
+			return items, ErrTooManyPages
+		}
+		if err := ctx.Err(); err != nil {
+			return items, err
+		}
+		if err := reserve(); err != nil {
+			return items, err
+		}
+		page, err := call.Do()
+		if err != nil {
+			return items, apiErr(err)
+		}
 		for _, it := range page.Items {
 			item := Item{VideoID: it.ContentDetails.VideoId, Title: it.Snippet.Title}
 			if t, err := time.Parse(time.RFC3339, it.ContentDetails.VideoPublishedAt); err == nil {
@@ -73,12 +94,11 @@ func (c *Client) FetchPlaylistItems(ctx context.Context, id string) ([]Item, err
 			}
 			items = append(items, item)
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, apiErr(err)
+		if page.NextPageToken == "" {
+			return items, nil
+		}
+		call.PageToken(page.NextPageToken)
 	}
-	return items, nil
 }
 
 func ReverseTitle(sourceTitle string) string {
