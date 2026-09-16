@@ -66,6 +66,9 @@ between independently triggered events, not only the intended success path.
   responses.
 - Trust forwarding headers only when the deployment topology enforces that trust
   boundary. Keep deployment secrets in secret references.
+- Treat process-local quota, rate-limit, and concurrency state as a deployment
+  constraint: prevent pod overlap and horizontal scaling unless those controls
+  move to shared storage with atomic operations.
 
 ## Verification
 

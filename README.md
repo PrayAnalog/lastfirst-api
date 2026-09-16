@@ -65,10 +65,12 @@ keeps another 10 seconds of Kubernetes termination headroom.
 
 ## Production security and capacity
 
-The checked-in deployment runs one replica because the daily YouTube quota
-budget and per-IP rate limiter are process-local. A restart resets that budget,
-and adding replicas multiplies it. Move both controls to shared durable storage
-before scaling horizontally.
+The checked-in deployment runs one replica with a non-overlapping `Recreate`
+rollout because the daily YouTube quota budget and per-IP rate limiter are
+process-local. A restart resets that budget, and overlapping or additional pods
+multiply it. This trades brief rollout unavailability for strict limits. Move
+both controls to shared durable storage before enabling zero-downtime rolling
+updates or scaling horizontally.
 
 Before a public launch:
 

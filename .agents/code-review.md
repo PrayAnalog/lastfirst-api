@@ -22,6 +22,8 @@ attempts reported at the external boundary rather than result sizes. For server
 lifecycle changes, check signal/listener-error races, routing removal before
 listener closure, completion of shutdown, forced-close behavior, and the full
 pre-stop/read/write/request/shutdown/termination timeout budget.
+When quota or rate-limit state is process-local, verify replica counts and
+rollout strategy cannot temporarily multiply the effective limits.
 
 If a review request is technically unsound, respond with repository evidence
 and trade-offs. Report valid findings; apply fixes and rerun checks only when the
