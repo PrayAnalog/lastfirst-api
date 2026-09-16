@@ -2,9 +2,12 @@ package youtube
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
+	"net/url"
 	"time"
 
 	"google.golang.org/api/googleapi"
@@ -154,7 +157,36 @@ func apiErr(err error) error {
 		// useful status without allowing a provider response into application logs.
 		return fmt.Errorf("YouTube API request failed with HTTP status %d", gerr.Code)
 	}
-	// Transport errors can include the full request URL (and API key). Return a
-	// stable error instead of propagating credentials into logs.
-	return errors.New("YouTube API transport request failed")
+	// Do not propagate the original text: transport errors can contain request
+	// URLs. Preserve a safe category so server logs can still distinguish DNS,
+	// TLS, timeout, and other network failures.
+	return fmt.Errorf("YouTube API transport request failed: %s", transportErrorCategory(err))
+}
+
+func transportErrorCategory(err error) string {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		err = urlErr.Err
+	}
+
+	var certificateErr *tls.CertificateVerificationError
+	if errors.As(err, &certificateErr) {
+		return "TLS certificate verification"
+	}
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		if dnsErr.IsTimeout {
+			return "DNS timeout"
+		}
+		return "DNS failure"
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return "network timeout"
+	}
+	var opErr *net.OpError
+	if errors.As(err, &opErr) {
+		return fmt.Sprintf("network %s failure", opErr.Op)
+	}
+	return fmt.Sprintf("transport failure (%T)", err)
 }

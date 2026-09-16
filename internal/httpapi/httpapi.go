@@ -148,7 +148,7 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), RequestTimeout)
 	defer cancel()
 
-	metaReservation, ok := s.budget.Reserve(1)
+	metaReservation, ok := s.budget.ReserveForUse(1)
 	if !ok {
 		s.quotaExhausted(w)
 		return
@@ -184,7 +184,7 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		if itemReservation.Use(1) {
 			return func() {}, nil
 		}
-		extraReservation, ok := s.budget.Reserve(1)
+		extraReservation, ok := s.budget.ReserveForUse(1)
 		if !ok {
 			return nil, youtube.ErrPageNotReserved
 		}

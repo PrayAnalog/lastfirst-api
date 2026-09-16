@@ -18,10 +18,13 @@ defect they claim to prevent. Mark optional polish as non-blocking.
 For bounded input, verify the parser reaches EOF before expensive work. For
 billable pagination, trace reservations through empty results, short pages,
 growth, failed attempts, cancellation, and quota-period rollover; use call
-attempts reported at the external boundary rather than result sizes. For server
-lifecycle changes, check signal/listener-error races, routing removal before
-listener closure, completion of shutdown, forced-close behavior, and the full
-pre-stop/read/write/request/shutdown/termination timeout budget.
+attempts reported at the external boundary rather than result sizes. Apply the
+same call-immediate accounting to metadata and overflow-page reservations. For
+sanitized upstream failures, verify client responses stay stable while server
+logs retain a non-secret transport or status category. For server lifecycle
+changes, check signal/listener-error races, routing removal before listener
+closure, completion of shutdown, forced-close behavior, and the full pre-stop/
+read/write/request/shutdown/termination timeout budget.
 When quota or rate-limit state is process-local, verify replica counts and
 rollout strategy cannot temporarily multiply the effective limits.
 

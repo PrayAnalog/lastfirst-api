@@ -104,6 +104,17 @@ type Reservation struct {
 // Reserve holds cost units against today's budget and reports whether there
 // was room for them. Call Commit or Release on every successful reservation.
 func (b *DailyBudget) Reserve(cost int) (*Reservation, bool) {
+	return b.reserve(cost, false)
+}
+
+// ReserveForUse atomically reserves cost units in the current quota period and
+// marks them as immediately about to be attempted. Release cannot return these
+// units, even if the period changes before the external call completes.
+func (b *DailyBudget) ReserveForUse(cost int) (*Reservation, bool) {
+	return b.reserve(cost, true)
+}
+
+func (b *DailyBudget) reserve(cost int, use bool) (*Reservation, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -112,7 +123,11 @@ func (b *DailyBudget) Reserve(cost int) (*Reservation, bool) {
 		return nil, false
 	}
 	b.used += cost
-	return &Reservation{budget: b, cost: cost, period: b.period}, true
+	reservation := &Reservation{budget: b, cost: cost, period: b.period}
+	if use {
+		reservation.used = cost
+	}
+	return reservation, true
 }
 
 // RetryAfterSeconds returns the number of seconds until the current quota

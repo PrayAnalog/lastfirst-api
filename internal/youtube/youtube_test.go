@@ -3,8 +3,11 @@ package youtube
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 
 	"google.golang.org/api/option"
@@ -44,9 +47,17 @@ func TestAPIKeyTransportUsesHeaderWithoutChangingOriginalRequest(t *testing.T) {
 }
 
 func TestAPIErrDoesNotExposeTransportURL(t *testing.T) {
-	err := apiErr(errors.New("GET https://example.com?key=secret-key failed"))
-	if got := err.Error(); got != "YouTube API transport request failed" {
-		t.Fatalf("apiErr() = %q", got)
+	err := apiErr(&url.Error{
+		Op:  "Get",
+		URL: "https://example.com?key=secret-key",
+		Err: &net.DNSError{Err: "no such host", Name: "example.com"},
+	})
+	got := err.Error()
+	if !strings.Contains(got, "DNS failure") {
+		t.Fatalf("apiErr() = %q, want DNS category", got)
+	}
+	if strings.Contains(got, "secret-key") || strings.Contains(got, "https://") {
+		t.Fatalf("apiErr() exposed request URL: %q", got)
 	}
 }
 

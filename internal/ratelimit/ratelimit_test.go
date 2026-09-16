@@ -119,6 +119,31 @@ func TestReservationReleaseKeepsUnitsMarkedUsed(t *testing.T) {
 	}
 }
 
+func TestReserveForUseChargesCurrentPeriodEvenWhenReleased(t *testing.T) {
+	budget := NewDailyBudget(2)
+	budget.mu.Lock()
+	budget.resetAt = time.Now().Add(-time.Second)
+	oldPeriod := budget.period
+	budget.mu.Unlock()
+
+	reservation, ok := budget.ReserveForUse(1)
+	if !ok {
+		t.Fatal("ReserveForUse() rejected available capacity")
+	}
+	reservation.Release()
+
+	budget.mu.Lock()
+	used := budget.used
+	period := budget.period
+	budget.mu.Unlock()
+	if period != oldPeriod+1 {
+		t.Fatalf("period = %d, want %d", period, oldPeriod+1)
+	}
+	if used != 1 {
+		t.Fatalf("used = %d, want 1", used)
+	}
+}
+
 func TestIPLimiterEvictsLeastRecentlyUsedAddressAtBound(t *testing.T) {
 	limiter := NewIPLimiter(1, time.Hour, 2)
 	if !limiter.Allow("192.0.2.1") || !limiter.Allow("192.0.2.2") {
