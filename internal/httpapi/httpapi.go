@@ -24,24 +24,28 @@ const watchChunk = 50
 const maxRequestBodyBytes = 8 << 10
 
 // RequestTimeout bounds the upstream work behind one playlist request, which
-// is up to maxPlaylistCost sequential YouTube calls. cmd/server derives the
-// connection write deadline and the shutdown budget from it, so a request
-// that runs to this limit is still allowed to finish.
+// is up to metaCost + maxPlaylistPages sequential YouTube calls. cmd/server
+// derives the
+// connection write deadline and the shutdown budget from it, so a request that
+// runs to this limit is still allowed to finish.
 const RequestTimeout = 2 * time.Minute
 
-const quotaExhaustedMessage = "daily API quota exhausted, try again after quota resets at midnight Pacific Time"
+const (
+	quotaExhaustedMessage   = "daily API quota exhausted, try again after quota resets at midnight Pacific Time"
+	playlistTooLargeMessage = "playlist too large to process right now"
+)
 
 // Quota policy: YouTube's default daily API quota is 10,000 units. We only
 // budget 8,000/day for this endpoint, keeping headroom for other usage of
 // the same key (console testing, future features). A request costs
 // 1 unit (playlist metadata) + 1 unit per page of items fetched; a single
-// playlist is capped at maxPlaylistCost so no one request can eat the
+// playlist is capped at maxPlaylistPages so no one request can eat the
 // whole day's budget. The per-IP limiter (5 burst, 1/min refill) stops a
 // single caller from looping requests faster than a person would.
 const (
 	dailyQuotaBudget = 8000
 	metaCost         = 1  // one playlists.list call
-	maxPlaylistCost  = 41 // metaCost + 40 pages = up to 2000 items
+	maxPlaylistPages = 40 // up to 2000 items
 	ipBurst          = 5
 	ipRefill         = time.Minute
 )
@@ -144,8 +148,8 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 
 	// An empty playlist still costs one playlistItems.list call.
 	pages := max(int((meta.ItemCount+youtube.PageSize-1)/youtube.PageSize), 1)
-	if metaCost+pages > maxPlaylistCost {
-		writeError(w, http.StatusRequestEntityTooLarge, "playlist too large to process right now")
+	if pages > maxPlaylistPages {
+		writeError(w, http.StatusRequestEntityTooLarge, playlistTooLargeMessage)
 		return
 	}
 	reservation, ok := s.budget.Reserve(pages)
@@ -154,9 +158,17 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, attempted, err := s.yt.FetchPlaylistItems(ctx, id)
+	// maxPlaylistPages, not the pages just reserved: the item count that sized
+	// the reservation is a snapshot from the metadata call, and a short page or
+	// a playlist that grew since then needs more requests than it predicted.
+	// Settle charges whatever they really cost, and the cap keeps that within
+	// what one request is allowed to spend.
+	items, attempted, err := s.yt.FetchPlaylistItems(ctx, id, maxPlaylistPages)
 	reservation.Settle(attempted)
 	switch {
+	case errors.Is(err, youtube.ErrTooManyPages):
+		writeError(w, http.StatusRequestEntityTooLarge, playlistTooLargeMessage)
+		return
 	case errors.Is(err, youtube.ErrQuotaExceeded):
 		writeError(w, http.StatusServiceUnavailable, err.Error())
 		return

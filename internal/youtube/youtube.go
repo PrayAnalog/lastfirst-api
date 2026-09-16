@@ -13,6 +13,7 @@ import (
 var (
 	ErrNotFound      = errors.New("playlist not found or private")
 	ErrQuotaExceeded = errors.New("YouTube API quota exceeded, try again later")
+	ErrTooManyPages  = errors.New("playlist needs more page requests than allowed")
 )
 
 const ReverseTitlePrefix = "[Reversed] "
@@ -63,11 +64,14 @@ func (c *Client) FetchPlaylistMeta(ctx context.Context, id string) (*Playlist, e
 
 // FetchPlaylistItems costs one quota unit per page request, which is one
 // request per PageSize items plus however many short pages the API decides to
-// return. It reports how many page requests it made, counting a failed one:
-// that request may still have reached YouTube and been billed. Items gathered
-// before a failure come back alongside the error, so a caller that gave up
-// early still knows what its reservation bought.
-func (c *Client) FetchPlaylistItems(ctx context.Context, id string) ([]Item, int, error) {
+// return. It makes at most maxPages of them and reports how many it made,
+// counting a failed one: that request may still have reached YouTube and been
+// billed. Items gathered before a failure come back alongside the error, so a
+// caller that gave up early still knows what its reservation bought. A
+// playlist with more pages than maxPages ends in ErrTooManyPages rather than
+// a silently short answer, since a reversal missing its oldest videos is the
+// wrong answer rather than a partial one.
+func (c *Client) FetchPlaylistItems(ctx context.Context, id string, maxPages int) ([]Item, int, error) {
 	call := c.svc.PlaylistItems.List([]string{"snippet", "contentDetails"}).PlaylistId(id).MaxResults(PageSize).Context(ctx)
 	var items []Item
 	pages := 0
@@ -87,7 +91,10 @@ func (c *Client) FetchPlaylistItems(ctx context.Context, id string) ([]Item, int
 		if page.NextPageToken == "" {
 			return items, pages, nil
 		}
-		call = call.PageToken(page.NextPageToken)
+		if pages >= maxPages {
+			return items, pages, ErrTooManyPages
+		}
+		call.PageToken(page.NextPageToken)
 	}
 }
 

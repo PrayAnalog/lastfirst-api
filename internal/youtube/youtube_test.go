@@ -3,6 +3,7 @@ package youtube
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -69,7 +70,7 @@ func badRequest(w http.ResponseWriter) {
 func TestFetchPlaylistItemsCountsShortPages(t *testing.T) {
 	c, got := stubClient(t, page(2, "next"), page(1, ""))
 
-	items, attempted, err := c.FetchPlaylistItems(context.Background(), "PL")
+	items, attempted, err := c.FetchPlaylistItems(context.Background(), "PL", 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +86,7 @@ func TestFetchPlaylistItemsCountsShortPages(t *testing.T) {
 func TestFetchPlaylistItemsCountsTheFailedPage(t *testing.T) {
 	c, got := stubClient(t, page(PageSize, "next"), badRequest)
 
-	items, attempted, err := c.FetchPlaylistItems(context.Background(), "PL")
+	items, attempted, err := c.FetchPlaylistItems(context.Background(), "PL", 10)
 	if err == nil {
 		t.Fatal("a failing page request returned no error")
 	}
@@ -101,7 +102,7 @@ func TestFetchPlaylistItemsCountsTheFailedPage(t *testing.T) {
 func TestFetchPlaylistItemsCountsTheRequestForAnEmptyPlaylist(t *testing.T) {
 	c, _ := stubClient(t, page(0, ""))
 
-	items, attempted, err := c.FetchPlaylistItems(context.Background(), "PL")
+	items, attempted, err := c.FetchPlaylistItems(context.Background(), "PL", 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,5 +111,22 @@ func TestFetchPlaylistItemsCountsTheRequestForAnEmptyPlaylist(t *testing.T) {
 	}
 	if attempted != 1 {
 		t.Errorf("reported %d page requests, want 1", attempted)
+	}
+}
+
+// A playlist that keeps handing back a next-page token is stopped at maxPages
+// rather than allowed to spend the whole daily budget on one request.
+func TestFetchPlaylistItemsStopsAtMaxPages(t *testing.T) {
+	c, _ := stubClient(t, page(PageSize, "next"), page(PageSize, "next"), page(PageSize, "next"))
+
+	items, attempted, err := c.FetchPlaylistItems(context.Background(), "PL", 2)
+	if !errors.Is(err, ErrTooManyPages) {
+		t.Fatalf("error %v, want ErrTooManyPages", err)
+	}
+	if attempted != 2 {
+		t.Errorf("made %d page requests, want to stop at the 2 allowed", attempted)
+	}
+	if len(items) != 2*PageSize {
+		t.Errorf("collected %d items, want the %d from the 2 pages read", len(items), 2*PageSize)
 	}
 }
