@@ -142,12 +142,14 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// clientIP prefers X-Forwarded-For's first entry, since the service sits
-// behind a reverse proxy/ingress in deployment; it falls back to the raw
+// clientIP prefers X-Real-IP, which the nginx ingress overwrites with the
+// address it accepted the connection from. X-Forwarded-For is appended to
+// rather than replaced, so its first entry is whatever the caller put there
+// and would let a client pick its own rate-limit bucket. Falls back to the raw
 // connection address for local/direct use.
 func clientIP(r *http.Request) string {
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		return strings.TrimSpace(strings.Split(fwd, ",")[0])
+	if ip := r.Header.Get("X-Real-IP"); ip != "" {
+		return ip
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
