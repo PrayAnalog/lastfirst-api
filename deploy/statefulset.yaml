@@ -1,13 +1,15 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: yt-reverse-playlist
 spec:
   replicas: 1
-  strategy:
-    # Quota and per-IP limits are process-local, so old and new pods must not
-    # overlap during a rollout.
-    type: Recreate
+  # Reusing ordinal 0 prevents a replacement from starting until the prior pod
+  # is fully deleted during normal rollouts, evictions, and manual deletions.
+  serviceName: yt-reverse-playlist-headless
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
   selector:
     matchLabels:
       app: yt-reverse-playlist

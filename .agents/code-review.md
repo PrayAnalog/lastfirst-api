@@ -25,8 +25,10 @@ logs retain a non-secret transport or status category. For server lifecycle
 changes, check signal/listener-error races, routing removal before listener
 closure, completion of shutdown, forced-close behavior, and the full pre-stop/
 read/write/request/shutdown/termination timeout budget.
-When quota or rate-limit state is process-local, verify replica counts and
-rollout strategy cannot temporarily multiply the effective limits.
+When quota or rate-limit state is process-local, verify replica counts and the
+workload controller prevent overlap during rollouts, eviction, and ordinary pod
+deletion, not only revision updates. Check migration steps when a manifest
+changes workload kind or object identity.
 
 If a review request is technically unsound, respond with repository evidence
 and trade-offs. Report valid findings; apply fixes and rerun checks only when the

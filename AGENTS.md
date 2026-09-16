@@ -67,8 +67,10 @@ between independently triggered events, not only the intended success path.
 - Trust forwarding headers only when the deployment topology enforces that trust
   boundary. Keep deployment secrets in secret references.
 - Treat process-local quota, rate-limit, and concurrency state as a deployment
-  constraint: prevent pod overlap and horizontal scaling unless those controls
-  move to shared storage with atomic operations.
+  constraint: choose a workload that prevents replacement pods from overlapping
+  during rollouts, eviction, and ordinary deletion, and do not scale horizontally
+  unless those controls move to shared storage with atomic operations. Document
+  safe migration whenever a workload kind or object identity changes.
 
 ## Verification
 

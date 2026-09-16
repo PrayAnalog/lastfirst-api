@@ -59,18 +59,30 @@ docker buildx bake -f docker-bake.hcl --push
 Kubernetes manifests for deployment (DigitalOcean Kubernetes) are in
 [`deploy/`](deploy).
 
-The supplied Deployment removes a terminating pod from routing before a
+The supplied StatefulSet removes a terminating pod from routing before a
 5-second `preStop` delay, allows up to 135 seconds for connection draining, and
 keeps another 10 seconds of Kubernetes termination headroom.
 
 ## Production security and capacity
 
-The checked-in deployment runs one replica with a non-overlapping `Recreate`
-rollout because the daily YouTube quota budget and per-IP rate limiter are
-process-local. A restart resets that budget, and overlapping or additional pods
-multiply it. This trades brief rollout unavailability for strict limits. Move
-both controls to shared durable storage before enabling zero-downtime rolling
-updates or scaling horizontally.
+The checked-in StatefulSet runs one `OrderedReady` replica because the daily
+YouTube quota budget and per-IP rate limiter are process-local. Its stable
+ordinal prevents a replacement pod from starting before the prior pod is fully
+deleted during normal rollouts, evictions, and manual deletions. A restart still
+resets the budget, and force-deleting a pod or losing contact with its node can
+violate Kubernetes' at-most-one identity guarantee. Do not force-delete this
+pod. Move both controls to shared durable storage before enabling zero-downtime
+updates, scaling horizontally, or requiring fencing across node partitions.
+
+Existing installations must remove the old Deployment before applying the
+StatefulSet; otherwise both controllers can run a pod with independent limits:
+
+```bash
+kubectl scale deployment yt-reverse-playlist --replicas=0
+kubectl wait --for=delete pod -l app=yt-reverse-playlist --timeout=180s
+kubectl delete deployment yt-reverse-playlist
+kubectl apply -f deploy
+```
 
 Before a public launch:
 

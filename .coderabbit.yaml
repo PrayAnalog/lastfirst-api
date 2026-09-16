@@ -35,7 +35,10 @@ reviews:
       instructions: |
         Flag missing readiness or liveness probes, missing resource requests
         and limits, and changes that would cause dropped connections during a
-        rolling update.
+        workload replacement or rollout.
+        When quota or rate-limit state is process-local, flag controllers that
+        can overlap terminating and replacement pods during ordinary deletion,
+        eviction, or revision updates.
         Flag secrets committed as literal values instead of secretKeyRef.
   tools:
     golangci-lint:

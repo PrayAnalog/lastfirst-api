@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: yt-reverse-playlist-headless
+spec:
+  clusterIP: None
+  selector:
+    app: yt-reverse-playlist
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
