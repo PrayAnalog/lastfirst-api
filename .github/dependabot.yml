@@ -11,6 +11,14 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: node
+        versions:
+          - ">= 23, < 24"
+          - ">= 25, < 26"
+          - ">= 27, < 28"
+          - ">= 29, < 30"
+          - ">= 31, < 32"
 
   - package-ecosystem: github-actions
     directory: /
