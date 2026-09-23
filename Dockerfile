@@ -3,7 +3,7 @@
 #   docker build -f backend/Dockerfile -t <image>:<tag> .
 
 # ---- frontend build ----
-FROM node:22-alpine AS frontend
+FROM node:24-alpine AS frontend
 WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
