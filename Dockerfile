@@ -14,7 +14,7 @@ RUN npm run build
 # Cross-compiled to linux/amd64 (DOKS node architecture) regardless of the
 # machine this is built on, so plain `docker build` always produces an
 # image DOKS can pull -- no --platform flag needed at build time.
-FROM golang:1.26-alpine AS backend
+FROM golang:1.27-alpine AS backend
 WORKDIR /app
 COPY backend/go.mod backend/go.sum ./
 RUN go mod download
