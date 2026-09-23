@@ -2,7 +2,7 @@ module ytreverse
 
 go 1.26.0
 
-require google.golang.org/api v0.297.0
+require google.golang.org/api v0.298.0
 
 require (
 	cloud.google.com/go/auth v0.23.2 // indirect
