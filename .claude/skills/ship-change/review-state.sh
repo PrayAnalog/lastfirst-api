@@ -111,8 +111,8 @@ query($owner: String!, $name: String!, $pr: Int!, $cursor: String) {
         pageInfo { hasNextPage endCursor }
         nodes {
           isResolved
-          root: comments(first: 1) { nodes { databaseId author { login } path line originalLine body } }
-          recent: comments(last: 100) { totalCount nodes { databaseId author { login } } }
+          root: comments(first: 1) { nodes { fullDatabaseId author { login } path line originalLine body } }
+          recent: comments(last: 100) { totalCount nodes { fullDatabaseId author { login } } }
         }
       }
     }
@@ -125,11 +125,11 @@ query($owner: String!, $name: String!, $pr: Int!, $cursor: String) {
     | select(.isResolved | not)
     | .root.nodes[0] as $c
     | ($c.body | gsub("<details>[\\s\\S]*?</details>"; "")) as $text
-    | [.recent.nodes[] | select(.databaseId != $c.databaseId) | .author.login] as $who
+    | [.recent.nodes[] | select(.fullDatabaseId != $c.fullDatabaseId) | .author.login] as $who
     | (if ($who | index($me)) == null then "UNANSWERED "
        elif $who[-1] == $me then "answered   "
        else "bot-replied" end)
-      + "  \($c.databaseId)  \($c.author.login)  \($c.path):\($c.line // $c.originalLine)  "
+      + "  \($c.fullDatabaseId)  \($c.author.login)  \($c.path):\($c.line // $c.originalLine)  "
       + (($text | capture("\\*\\*(?<t>[^*]+)\\*\\*").t // ($text | ltrimstr("\n") | split("\n")[0]))
          | sub("<sub>.*</sub>\\s*"; ""))' <<<"$page")
   threads+=$'\n'
