@@ -24,7 +24,7 @@ jobs:
         run: |
           trailer='test("(?im)^co-authored-by: claude [^\n]*<noreply@anthropic\\.com>$")'
           if [ "$ACTION" = synchronize ]; then
-            all=$(gh api "repos/$REPO/compare/$BEFORE...$AFTER" --jq "if .total_commits == (.commits | length) then [.commits[].commit.message | $trailer] | all else false end")
+            all=$(gh api "repos/$REPO/compare/$BEFORE...$AFTER" --jq "if .status == \"ahead\" and .total_commits == (.commits | length) then [.commits[].commit.message | $trailer] | all else false end")
           else
             all=$(gh api --paginate "repos/$REPO/pulls/$PR/commits" --jq ".[].commit.message | $trailer")
             [ "$(printf '%s\n' "$all" | grep -c .)" = "$COMMITS" ] || all=false
