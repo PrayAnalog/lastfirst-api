@@ -144,9 +144,9 @@ each finding against the code its reply points to and check that its failure
 scenario is gone, or that the reply gives repository evidence for declining it.
 The script finds outside-diff findings only under "Outside diff range
 comments", and CodeRabbit also uses "Outside the diff" (#32), so read every
-CodeRabbit review body posted since your last reply yourself. A bot that
-paused, skipped the PR or ran out of usage without reviewing the current head
-has not reviewed it: report it to the user as not run, never as clean.
+CodeRabbit review body on the PR yourself. A bot that paused, skipped the PR or
+ran out of usage without reviewing the current head has not reviewed it: report
+it to the user as not run, never as clean.
 
 ## 7. Close the loop
 
