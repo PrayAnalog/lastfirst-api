@@ -37,6 +37,9 @@ origin/main`; never `git checkout main`.
 - `.coderabbit.yaml` `path_instructions` and `AGENTS.md` **Production
   boundaries** for the paths involved. They are the rules the bots review
   against, so they are authoring rules here.
+- When the change edits a process document (skill, checklist, `AGENTS.md`,
+  `CLAUDE.md`), every other document that prescribes the same step. Make them
+  agree in the same PR.
 
 ## 3. Implement and verify
 
