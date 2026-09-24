@@ -15,7 +15,9 @@
 #   verdict: unapproved  every thread is answered but CodeRabbit has not
 #                        approved this head; read its latest review body
 #                        and any thread marked bot-replied
-#   verdict: quiet       both bots are done with this head and nothing is open
+#   verdict: quiet       both bots are done with this head and every thread
+#                        ends with your reply; whether a reply resolved its
+#                        finding is not checked
 set -euo pipefail
 
 pr=${1:?usage: review-state.sh <pr-number>}
