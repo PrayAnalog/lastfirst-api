@@ -21,10 +21,11 @@ goroutine nobody waits on drains nothing.
 
 ## 2. Account for every error the diff can produce
 
-For each goroutine, channel, and call the diff adds, name the line that receives
-its error on *every* path through the function, including paths that return
-early or take a different `select` branch. A buffered channel written by a
-goroutine and read on only one path loses real failures silently.
+For each goroutine, channel, and call the diff adds, name where its error goes
+on *every* path through the function, including paths that return early or
+take a different `select` branch, and say so when the rule below lets it be
+ignored. A buffered channel written by a goroutine and read on only one path
+loses real failures silently.
 
 Handle an error when ignoring it changes state, the response, or resource
 cleanup, or hides a failure someone could act on. A test that ignores a `RoundTrip` error can pass
