@@ -71,6 +71,19 @@ between independently triggered events, not only the intended success path.
   container before the new one starts, and do not scale horizontally unless
   those controls move to shared storage with atomic operations.
 
+## Review guidelines
+
+- Production boundaries and the race tracing under **Ownership** apply to the
+  service code, `Dockerfile` and `deploy/`. They are not the bar for
+  `.github/` workflows or other development tooling.
+- In `.github/` and development tooling, flag failures reachable in normal use:
+  workflow permissions wider than needed, secrets exposed to untrusted code,
+  and fork pull requests crossing the trust boundary. Do not flag races that
+  need concurrent manual actions, or limits no real change reaches.
+- The `Code Review` workflow is one of three reviewers: CodeRabbit reviews
+  every push and Codex reviews each pull request, whatever this workflow
+  skips. Skipping it in a rare sequence is an accepted risk, not a defect.
+
 ## Verification
 
 - Test externally visible behavior and production invariants. Add a deterministic
