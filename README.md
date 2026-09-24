@@ -53,9 +53,34 @@ droplet keeps copies of [`deploy/docker-compose.yml`](deploy/docker-compose.yml)
 and [`deploy/Caddyfile`](deploy/Caddyfile) in `/opt/lastfirst`, next to an
 `.env` that provides `YT_API_KEY`.
 
+`deploy/deploy.sh` does not copy those two files; it only rewrites the app
+image tag in the droplet's `docker-compose.yml`. Before deploying, compare them
+with the droplet's copies (the app image tag line is expected to differ):
+
+```bash
+ssh root@<droplet-ip> 'cat /opt/lastfirst/Caddyfile' | diff deploy/Caddyfile -
+ssh root@<droplet-ip> 'cat /opt/lastfirst/docker-compose.yml' | diff deploy/docker-compose.yml -
+```
+
+If the Caddyfile differs, overwrite it in place and reload Caddy. It is
+bind-mounted as a single file, so replacing the file instead of writing into
+it would leave the container reading the old one:
+
+```bash
+ssh root@<droplet-ip> 'cat > /opt/lastfirst/Caddyfile' < deploy/Caddyfile
+ssh root@<droplet-ip> 'cd /opt/lastfirst && docker compose exec -w /etc/caddy caddy caddy reload'
+```
+
+If `docker-compose.yml` differs, apply the change to the droplet's copy by
+hand, keeping its current app image tag, and run
+`docker compose up -d` in `/opt/lastfirst`.
+
 To build, push `ghcr.io/prayanalog/lastfirst:<tag>`, and roll it out on the
 droplet (run from the `backend/` checkout):
 
 ```bash
 DEPLOY_HOST=<droplet-ip> deploy/deploy.sh <tag>
 ```
+
+This pulls and recreates only the `app` service, after checking that the
+droplet's compose file now names that image; Caddy is left running.
