@@ -94,7 +94,8 @@ until .claude/skills/ship-change/review-state.sh <pr> | grep -Eq '^verdict: (fin
 
 Run the loop in the background (Monitor) and move on to another PR meanwhile.
 On `verdict: blocked`, post the comment the script names for the blocked bot
-and start waiting again.
+and start waiting again, once. If the bot is still blocked, or has not reviewed
+the head, when that wait ends, ask the user whether to finish without it.
 
 For each open finding, read the code it points at, then take the first of
 these that applies:
@@ -145,8 +146,7 @@ the repository evidence for declining it. The script finds outside-diff
 findings only under "Outside diff range comments", and CodeRabbit also uses
 "Outside the diff" (#32), so read its latest review body yourself. A bot that
 paused, skipped the PR or ran out of usage without reviewing the current head
-has not reviewed it: report it to the user as not run, never as clean, rather
-than waiting on it indefinitely.
+has not reviewed it: report it to the user as not run, never as clean.
 
 ## 7. Close the loop
 
