@@ -49,6 +49,14 @@ reviews:
         the same image).
         Flag secrets committed as literal values instead of ${VAR} references
         resolved from the droplet's .env.
+    - path: ".github/**"
+      instructions: |
+        This is development tooling, not production. Flag workflow
+        permissions wider than the job needs, secrets reachable by code from
+        fork pull requests, and conditions a fork pull request can control.
+        Do not flag races that need concurrent manual actions, or limits no
+        real change reaches. The Code Review workflow is one of three
+        reviewers, so a rare skip is an accepted risk.
   tools:
     golangci-lint:
       enabled: true
