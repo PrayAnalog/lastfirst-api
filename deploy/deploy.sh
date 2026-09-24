@@ -14,4 +14,4 @@ cd "$repo/.."
 
 docker buildx build --platform linux/amd64 -f backend/Dockerfile -t "$IMAGE" --push .
 
-ssh "root@$HOST" "cd /opt/lastfirst && sed -i 's#\(prayanalog/lastfirst:\).*#\1$TAG#' docker-compose.yml && docker compose config --images | grep -Fqx '$IMAGE' && docker compose pull app && docker compose up -d app"
+ssh "root@$HOST" "cd /opt/lastfirst && sed -i 's#\(prayanalog/lastfirst:\).*#\1$TAG#' docker-compose.yml && docker compose config --images app | grep -Fqx '$IMAGE' && docker compose pull app && docker compose up -d app"
