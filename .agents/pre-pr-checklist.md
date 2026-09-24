@@ -112,7 +112,17 @@ values in the diff, and review treats them as decisions this change made. Set
 each field the construct exposes deliberately, or say in the PR body why the
 zero value is correct.
 
-## 9. Answer each review round in the thread
+## 9. Commit a regression test that fails on the base
+
+A bug fix ships with a deterministic test that fails against the base branch
+and passes on the fix. #63 closed a spoofable rate-limit key, checked the fix
+with a table test, and deleted the test before committing; review sent it back
+because nothing would stop a later edit from restoring the bypass. Run the new
+test against the base implementation before pushing and name the cases that
+failed there in the PR body. When a deterministic test is genuinely
+impractical, say why in the PR body instead.
+
+## 10. Answer each review round in the thread
 
 Fix the valid findings in a commit, then reply to every thread with the commit
 that addressed it and what changed, or with the reason it is being declined.
