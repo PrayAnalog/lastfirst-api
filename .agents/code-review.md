@@ -3,8 +3,8 @@
 Report a finding only when this diff introduces or worsens a concrete failure.
 Name the trigger, the deployed configuration it runs under, the callers
 involved, the impact, and the smallest correction. Do not report a deployment
-assumption you have not confirmed in `deploy/`, `Dockerfile` or `AGENTS.md` as
-a defect. Do not block on taste, naming, comments, or formatter output.
+assumption the repository does not confirm, in `deploy/`, `Dockerfile`,
+`README.md`, `AGENTS.md` or elsewhere, as a defect. Do not block on taste, naming, comments, or formatter output.
 
 In service code, `Dockerfile` and `deploy/`, trace quota attempts and the
 period they belong to, bounded input, cancellation, listener and handler
