@@ -26,8 +26,10 @@ its error on *every* path through the function, including paths that return
 early or take a different `select` branch. A buffered channel written by a
 goroutine and read on only one path loses real failures silently.
 
-Test code and trivial handlers are not exempt: a dropped `w.Write` error in a
-test stub or a health handler was flagged under the same rule.
+Handle an error when ignoring it changes state, the response, or resource
+cleanup, or hides a failure someone could act on. A test that ignores a `RoundTrip` error can pass
+while the request failed, so it counts; a health handler's `w.Write` error to
+a client that has gone away does not, because nothing can still reach it.
 
 Sanitizing an upstream error for clients must not erase the server-side failure
 category. Keep client responses stable and secret-free while retaining a safe
