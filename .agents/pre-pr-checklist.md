@@ -124,6 +124,9 @@ impractical, say why in the PR body instead.
 
 ## 10. Answer each review round in the thread
 
-Fix the valid findings in a commit, then reply to every thread with the commit
-that addressed it and what changed, or with the reason it is being declined.
+Sort the findings as `ship-change` step 6 does: ask before a fix that needs new
+state, permissions or triggers, decline accepted risks with the sequence they
+need, and fix the other valid findings in a commit. Then reply to every thread
+with the commit that addressed it and what changed, or with the reason it is
+being declined.
 Re-run this checklist over the new diff before pushing.

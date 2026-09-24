@@ -93,24 +93,24 @@ Run the loop in the background (Monitor) and move on to another PR meanwhile.
 On `verdict: blocked`, post the comment the script names for the blocked bot
 and start waiting again.
 
-For each open finding, read the code it points at and decide:
+For each open finding, read the code it points at, then take the first of
+these that applies:
 
-- **Reachable in normal use** — the failure follows from an ordinary sequence
-  of events in this repository's workflow. Fix it in a commit whose message
-  names each defect it fixes. Re-run step 3 and the checklist over the new diff
-  before pushing.
-- **Accepted risk** — the failure needs a theoretical sequence, such as
-  concurrent manual actions or limits no real change reaches, and what fails is
-  an advisory control that other safeguards still cover. Decline it with the
-  sequence it needs and why the risk is accepted, and list it under **Known
-  limitations** in the PR body.
-- **Needs new state, permissions or triggers** — the fix would add state
-  carried across events, a new permission, or a new trigger. Ask the user
-  before fixing it.
-- **Not valid, or not fixable in this repository** — decline with repository
-  evidence: file and line, doc quote, or a reproduction. A finding that needs
-  infrastructure the repository does not define goes into **Pre-deploy checks**
-  in the PR body instead of a guessed manifest.
+1. **Not valid, or not fixable in this repository** — decline with repository
+   evidence: file and line, doc quote, or a reproduction. A finding that needs
+   infrastructure the repository does not define goes into **Pre-deploy
+   checks** in the PR body instead of a guessed manifest.
+2. **Needs new state, permissions or triggers** — the fix would add state
+   carried across events, a new permission, or a new trigger. Ask the user
+   before fixing it, however the finding would otherwise be classified.
+3. **Accepted risk** — the failure needs a theoretical sequence, such as
+   concurrent manual actions or limits no real change reaches, and what fails is
+   an advisory control that other safeguards still cover, never a production
+   invariant from `AGENTS.md`. Decline it with the sequence it needs and why the
+   risk is accepted, and list it under **Known limitations** in the PR body.
+4. **Valid** — fix it in a commit whose message names each defect it fixes,
+   including uncommon interleavings that break a production invariant. Re-run
+   step 3 and the checklist over the new diff before pushing.
 
 Stop and ask the user before fixing when every finding in a round targets a
 mechanism added by the previous round's fix: present the simpler design that
