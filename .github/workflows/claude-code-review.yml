@@ -6,6 +6,7 @@ jobs:
   review:
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       pull-requests: write
       issues: read
@@ -24,7 +25,12 @@ jobs:
         run: |
           trailer='test("(?im)^co-authored-by: claude [^\n]*<noreply@anthropic\\.com>$")'
           if [ "$ACTION" = synchronize ]; then
-            all=$(gh api "repos/$REPO/compare/$BEFORE...$AFTER" --jq "if .status == \"ahead\" and .total_commits == (.commits | length) then [.commits[].commit.message | $trailer] | all else false end")
+            prior=$(gh api "repos/$REPO/actions/workflows/claude-code-review.yml/runs?head_sha=$BEFORE&event=pull_request&per_page=1" --jq '.workflow_runs[0].conclusion // ""')
+            if [ "$prior" = success ]; then
+              all=$(gh api "repos/$REPO/compare/$BEFORE...$AFTER" --jq "if .status == \"ahead\" and .total_commits == (.commits | length) then [.commits[].commit.message | $trailer] | all else false end")
+            else
+              all=false
+            fi
           else
             all=$(gh api --paginate "repos/$REPO/pulls/$PR/commits" --jq ".[].commit.message | $trailer")
             [ "$(printf '%s\n' "$all" | grep -c .)" = "$COMMITS" ] || all=false
