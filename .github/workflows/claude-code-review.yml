@@ -11,11 +11,23 @@ jobs:
       issues: read
       id-token: write
     steps:
-      - uses: actions/checkout@v7
+      - id: author
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          message=$(gh api "repos/$REPO/commits/$SHA" --jq .commit.message)
+          if printf '%s\n' "$message" | grep -qi '^Co-Authored-By: Claude'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.author.outputs.skip != 'true'
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
           persist-credentials: false
-      - uses: anthropics/claude-code-action@v1
+      - if: steps.author.outputs.skip != 'true'
+        uses: anthropics/claude-code-action@v1
         env:
           CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
         with:
