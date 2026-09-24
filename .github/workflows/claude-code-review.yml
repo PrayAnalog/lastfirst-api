@@ -20,12 +20,13 @@ jobs:
           ACTION: ${{ github.event.action }}
           PR: ${{ github.event.pull_request.number }}
           COMMITS: ${{ github.event.pull_request.commits }}
+          HEAD_REF: ${{ github.head_ref }}
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.event.after }}
         run: |
           trailer='test("(?im)^co-authored-by: claude [^\n]*<noreply@anthropic\\.com>$")'
           if [ "$ACTION" = synchronize ]; then
-            prior=$(gh api "repos/$REPO/actions/workflows/claude-code-review.yml/runs?head_sha=$BEFORE&event=pull_request&per_page=1" --jq '.workflow_runs[0].conclusion // ""')
+            prior=$(gh api "repos/$REPO/actions/workflows/claude-code-review.yml/runs?head_sha=$BEFORE&event=pull_request&per_page=100" --jq '[.workflow_runs[] | select(.head_branch == env.HEAD_REF)][0].conclusion // ""')
             if [ "$prior" = success ]; then
               all=$(gh api "repos/$REPO/compare/$BEFORE...$AFTER" --jq "if .status == \"ahead\" and .total_commits == (.commits | length) then [.commits[].commit.message | $trailer] | all else false end")
             else
