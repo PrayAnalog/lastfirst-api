@@ -11,9 +11,9 @@ behaviors that could be reverted separately, split the branch: #20 carried
 seven such behaviors and every fix to one of them reopened review of all the
 others. A change whose bounds are written over another change's bounds is
 stacked on that change's branch rather than folded into it. Merged without the
-PRs stacked above it, this diff must not break or worsen a production
-invariant `AGENTS.md` declares; if it needs one piece of a PR above it, move just that piece down
-into this one.
+PRs stacked above it, this diff must not break or worsen a production invariant
+`AGENTS.md` declares; if it needs one piece of a PR above it, move just that
+piece down into this one.
 
 ## 1. Walk the named behavior as an event sequence
 

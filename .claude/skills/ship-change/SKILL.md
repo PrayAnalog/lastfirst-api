@@ -26,10 +26,11 @@ with `--base <parent-branch>`. Every other change branches from `origin/main`.
 Do not bundle coupled changes into one PR to avoid stacking.
 
 Every PR in a stack has to be safe to merge without the ones above it: merged
-alone, it must not break or worsen a production invariant `AGENTS.md`
-declares, in **Scope** or **Production boundaries**. When a PR is unsafe without one piece of a PR above it, move
-just that piece down into it rather than folding the whole stack into one PR.
-This covers what the diff changes, not debt that was already there.
+alone, it must not break or worsen a production invariant `AGENTS.md` declares,
+in **Scope** or **Production boundaries**. When a PR is unsafe without one
+piece of a PR above it, move just that piece down into it rather than folding
+the whole stack into one PR. This covers what the diff changes, not debt that
+was already there.
 
 `main` is checked out in another worktree, so `git switch -c <branch>
 origin/main`; never `git checkout main`.
