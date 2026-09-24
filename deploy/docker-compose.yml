@@ -3,7 +3,7 @@ services:
     image: ghcr.io/prayanalog/lastfirst:v1
     restart: unless-stopped
     environment:
-      YT_API_KEY: ${YT_API_KEY}
+      YT_API_KEY: ${YT_API_KEY:?YT_API_KEY is required}
     expose:
       - "8080"
   caddy:

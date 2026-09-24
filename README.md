@@ -62,13 +62,16 @@ ssh root@<droplet-ip> 'cat /opt/lastfirst/Caddyfile' | diff deploy/Caddyfile -
 ssh root@<droplet-ip> 'cat /opt/lastfirst/docker-compose.yml' | diff deploy/docker-compose.yml -
 ```
 
-If the Caddyfile differs, overwrite it in place and reload Caddy. It is
-bind-mounted as a single file, so replacing the file instead of writing into
-it would leave the container reading the old one:
+If the Caddyfile differs, validate it locally, stage it on the droplet, then
+write it into the live file and reload Caddy, restoring the previous contents
+if the reload fails. The live file is bind-mounted as a single file, so it
+must be written into rather than replaced, or the container keeps reading the
+old one:
 
 ```bash
-ssh root@<droplet-ip> 'cat > /opt/lastfirst/Caddyfile' < deploy/Caddyfile
-ssh root@<droplet-ip> 'cd /opt/lastfirst && docker compose exec -w /etc/caddy caddy caddy reload'
+docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+ssh root@<droplet-ip> 'cat > /opt/lastfirst/Caddyfile.new' < deploy/Caddyfile
+ssh root@<droplet-ip> 'cd /opt/lastfirst && cp Caddyfile Caddyfile.bak && cat Caddyfile.new > Caddyfile && { docker compose exec -w /etc/caddy caddy caddy reload || { cat Caddyfile.bak > Caddyfile; false; }; }'
 ```
 
 If `docker-compose.yml` differs, apply the change to the droplet's copy by
