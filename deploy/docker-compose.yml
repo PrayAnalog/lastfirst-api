@@ -1,0 +1,19 @@
+services:
+  app:
+    image: ghcr.io/prayanalog/lastfirst:v1
+    restart: unless-stopped
+    environment:
+      YT_API_KEY: ${YT_API_KEY}
+    expose:
+      - "8080"
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+volumes:
+  caddy_data:

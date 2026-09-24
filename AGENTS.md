@@ -3,7 +3,8 @@
 ## Scope
 
 This is the Go backend for `lastfirst.app`. It serves the frontend, accepts
-playlist input over HTTP, calls the YouTube Data API, and runs on Kubernetes.
+playlist input over HTTP, calls the YouTube Data API, and runs with Docker
+Compose on a single DigitalOcean droplet behind Caddy.
 Public HTTP behavior, YouTube quota accounting, concurrent handler state, and
 clean connection draining are production invariants.
 
@@ -54,10 +55,9 @@ between independently triggered events, not only the intended success path.
   on every exit path, and never release an old-period reservation into a new
   quota period.
 - Configure HTTP server and client timeouts deliberately. For lifecycle changes,
-  inspect the app, probes, `Dockerfile`, and Kubernetes manifests together;
-  stop routing before closing the listener, wait for both the listener and
-  in-flight handlers, and fit pre-stop plus shutdown inside the termination
-  grace period.
+  inspect the app, `Dockerfile`, `deploy/docker-compose.yml`, and
+  `deploy/Caddyfile` together; wait for both the listener and in-flight
+  handlers, and fit shutdown inside the container's stop grace period.
 - Fully consume and validate bounded request bodies before starting expensive
   or billable work; a successful first decode alone does not prove the body is
   within its limit or contains only one value.
@@ -67,10 +67,9 @@ between independently triggered events, not only the intended success path.
 - Trust forwarding headers only when the deployment topology enforces that trust
   boundary. Keep deployment secrets in secret references.
 - Treat process-local quota, rate-limit, and concurrency state as a deployment
-  constraint: choose a workload that prevents replacement pods from overlapping
-  during rollouts, eviction, and ordinary deletion, and do not scale horizontally
-  unless those controls move to shared storage with atomic operations. Document
-  safe migration whenever a workload kind or object identity changes.
+  constraint: run exactly one app container, let a redeploy stop the old
+  container before the new one starts, and do not scale horizontally unless
+  those controls move to shared storage with atomic operations.
 
 ## Verification
 

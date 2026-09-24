@@ -44,11 +44,18 @@ go run ./cmd/server
 
 Built as a single Docker image containing both the compiled Go binary and
 the Vite-built frontend (see `Dockerfile`, build context is the project
-root containing both `backend/` and `frontend/`):
+root containing both `backend/` and `frontend/`).
+
+Production runs on a single DigitalOcean droplet with Docker Compose:
+[Caddy](https://caddyserver.com) terminates TLS for `lastfirst.app` and
+proxies to the app container, whose port is not published on the host. The
+droplet keeps copies of [`deploy/docker-compose.yml`](deploy/docker-compose.yml)
+and [`deploy/Caddyfile`](deploy/Caddyfile) in `/opt/lastfirst`, next to an
+`.env` that provides `YT_API_KEY`.
+
+To build, push `ghcr.io/prayanalog/lastfirst:<tag>`, and roll it out on the
+droplet (run from the `backend/` checkout):
 
 ```bash
-docker buildx bake -f docker-bake.hcl --push
+DEPLOY_HOST=<droplet-ip> deploy/deploy.sh <tag>
 ```
-
-Kubernetes manifests for deployment (DigitalOcean Kubernetes) are in
-[`deploy/`](deploy).

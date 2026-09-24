@@ -37,13 +37,18 @@ reviews:
         grows without bound.
     - path: "deploy/**"
       instructions: |
-        Flag missing readiness or liveness probes, missing resource requests
-        and limits, and changes that would cause dropped connections during a
-        workload replacement or rollout.
-        When quota or rate-limit state is process-local, flag controllers that
-        can overlap terminating and replacement pods during ordinary deletion,
-        eviction, or revision updates.
-        Flag secrets committed as literal values instead of secretKeyRef.
+        Production is Docker Compose on one droplet, with Caddy in front of
+        the app container.
+        Flag an app port published on the host: the app must be reachable
+        only through Caddy, because the per-IP limiter trusts the
+        X-Forwarded-For entry Caddy writes.
+        Flag Caddyfile settings that trust or rewrite incoming
+        X-Forwarded-For (trusted_proxies, header_up X-Forwarded-For).
+        Quota and rate-limit state is process-local: flag anything that can
+        run two app containers at once (scale, replicas, a second service on
+        the same image).
+        Flag secrets committed as literal values instead of ${VAR} references
+        resolved from the droplet's .env.
   tools:
     golangci-lint:
       enabled: true
