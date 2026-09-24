@@ -1,12 +1,13 @@
 ---
 name: ship-change
-description: Take an implementation request in lastfirst-api from requirement to a pull request the review bots have nothing left to say about — split it into one PR per change, implement each on its own branch from origin/main, pass the pre-PR checklist and /code-review, open the PR, then repeat review rounds until CodeRabbit and Codex are quiet. Use for any request here to implement, fix, harden or change behavior ("구현해", "고쳐", "PR 올려"), even when the request does not mention review, branches or PRs.
+description: Take an implementation request in lastfirst-api from requirement to a pull request with no actionable review-bot findings left — split it into one PR per change, implement each on its own branch from origin/main, pass the pre-PR checklist and /code-review, open the PR, then repeat review rounds until every CodeRabbit and Codex finding is fixed or declined with evidence. Use for any request here to implement, fix, harden or change behavior ("구현해", "고쳐", "PR 올려"), even when the request does not mention review, branches or PRs.
 ---
 
 # Ship a change
 
-In this repository a change is finished when CodeRabbit and Codex have nothing
-left to say about its PR, not when it compiles. PRs #7, #17 and #20 each "worked"
+In this repository a change is finished when no actionable CodeRabbit or Codex
+finding remains on its PR and every other finding is declined with evidence,
+not when it compiles. PRs #7, #17 and #20 each "worked"
 and each went through rounds of findings; #20 bundled seven requirements and
 drew 24 comments, because every fix in one area started a new round across all
 of them. This skill is the process that avoids that. Follow every step; do not
@@ -73,6 +74,8 @@ The body has these sections, in English:
 - **Pre-deploy checks** — anything that depends on infrastructure this
   repository does not define, with the command that verifies it.
 - **Out of scope** — related work left to other PRs, naming them.
+- **Known limitations** — findings declined as accepted risk, each with the
+  sequence it needs. Omit the section when there are none.
 
 For a stacked PR, say which PR it builds on. CodeRabbit skips PRs whose base is
 not `main`; comment `@coderabbitai review` on those.
@@ -90,14 +93,30 @@ Run the loop in the background (Monitor) and move on to another PR meanwhile.
 On `verdict: blocked`, post the comment the script names for the blocked bot
 and start waiting again.
 
-For each open finding, read the code it points at and decide:
+For each open finding, read the code it points at, then take the first of
+these that applies:
 
-- **Valid** — fix it in a commit whose message names each defect it fixes. Re-run
-  step 3 and the checklist over the new diff before pushing.
-- **Not valid, or not fixable in this repository** — decline with repository
-  evidence: file and line, doc quote, or a reproduction. A finding that needs
-  infrastructure the repository does not define goes into **Pre-deploy checks**
-  in the PR body instead of a guessed manifest.
+1. **Not valid, or not fixable in this repository** — decline with repository
+   evidence: file and line, doc quote, or a reproduction. A finding that needs
+   infrastructure the repository does not define goes into **Pre-deploy
+   checks** in the PR body instead of a guessed manifest.
+2. **Needs new state, permissions or triggers** — the fix would add state
+   carried across events, a new permission, or a new trigger. Ask the user
+   before fixing it, however the finding would otherwise be classified.
+3. **Accepted risk** — the failure needs a theoretical sequence, such as
+   concurrent manual actions or limits no real change reaches, and what fails is
+   an advisory control that other safeguards still cover, never a production
+   invariant from `AGENTS.md`. Decline it with the sequence it needs and why the
+   risk is accepted, and list it under **Known limitations** in the PR body.
+4. **Valid** — fix it in a commit whose message names each defect it fixes,
+   including uncommon interleavings that break a production invariant. Re-run
+   step 3 and the checklist over the new diff before pushing.
+
+Stop and ask the user before fixing when every finding in a round targets a
+mechanism added by the previous round's fix: present the simpler design that
+does not need that mechanism. After the third round, ask the user whether to
+continue before every further round. PR #64 took nine rounds; seven of its
+findings came from one mechanism added mid-review.
 
 Answer every finding in its own thread, naming the commit and what changed, or
 the evidence for declining:
@@ -110,8 +129,9 @@ Findings posted only in a review body ("Outside diff range comments") get a PR
 comment instead. Thread replies are written in Korean, matching CodeRabbit's
 configured language.
 
-Push, update the PR body if the approach changed, and wait again. Stop only
-when the script prints `verdict: quiet`. `verdict: unapproved` means every
+Push, update the PR body if the approach changed, and wait again. Stop when
+the script prints `verdict: quiet`, or when the user decides to stop at one of
+the questions above. `verdict: unapproved` means every
 thread is answered but CodeRabbit has not approved; read its latest review
 body, its summary comment and every thread marked `bot-replied` before
 deciding whether anything is still open. A bot that stays out of usage is
