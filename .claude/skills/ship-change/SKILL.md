@@ -93,9 +93,8 @@ until .claude/skills/ship-change/review-state.sh <pr> | grep -Eq '^verdict: (fin
 ```
 
 Run the loop in the background (Monitor) and move on to another PR meanwhile.
-On `verdict: blocked`, post the comment the script names for the blocked bot
-and start waiting again, once. If the bot is still blocked, or has not reviewed
-the head, when that wait ends, ask the user whether to finish without it.
+On `verdict: blocked`, post the comment the script names for the blocked bot,
+then ask the user whether to wait for it or finish without it.
 
 For each open finding, read the code it points at, then take the first of
 these that applies:
@@ -140,11 +139,12 @@ thread is answered but CodeRabbit has not approved; read its latest review
 body, its summary comment and every thread marked `bot-replied` before
 deciding whether anything is still open.
 
-`quiet` counts replies, not resolutions. Before reporting a PR as done, check
-that every reply names a commit that changes the code its finding cites, or
-the repository evidence for declining it. The script finds outside-diff
-findings only under "Outside diff range comments", and CodeRabbit also uses
-"Outside the diff" (#32), so read its latest review body yourself. A bot that
+`quiet` counts replies, not resolutions. Before reporting a PR as done, re-read
+each finding against the code its reply points to and check that its failure
+scenario is gone, or that the reply gives repository evidence for declining it.
+The script finds outside-diff findings only under "Outside diff range
+comments", and CodeRabbit also uses "Outside the diff" (#32), so read every
+CodeRabbit review body posted since your last reply yourself. A bot that
 paused, skipped the PR or ran out of usage without reviewing the current head
 has not reviewed it: report it to the user as not run, never as clean.
 
