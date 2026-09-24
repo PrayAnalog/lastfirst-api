@@ -22,13 +22,12 @@ attempts reported at the external boundary rather than result sizes. Apply the
 same call-immediate accounting to metadata and overflow-page reservations. For
 sanitized upstream failures, verify client responses stay stable while server
 logs retain a non-secret transport or status category. For server lifecycle
-changes, check signal/listener-error races, routing removal before listener
-closure, completion of shutdown, forced-close behavior, and the full pre-stop/
-read/write/request/shutdown/termination timeout budget.
-When quota or rate-limit state is process-local, verify replica counts and the
-workload controller prevent overlap during rollouts, eviction, and ordinary pod
-deletion, not only revision updates. Check migration steps when a manifest
-changes workload kind or object identity.
+changes, check signal/listener-error races, completion of shutdown,
+forced-close behavior, and the full read/write/request/shutdown timeout budget
+against the container's `stop_grace_period`.
+When quota or rate-limit state is process-local, verify that `deploy/` still
+runs exactly one app container and that a redeploy stops the old container
+before the new one starts.
 
 If a review request is technically unsound, respond with repository evidence
 and trade-offs. Report valid findings; apply fixes and rerun checks only when the

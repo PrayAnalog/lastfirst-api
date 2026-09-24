@@ -31,7 +31,7 @@ origin/main`; never `git checkout main`.
 ## 2. Read before writing
 
 - The files the change touches, their callers, and the far side of every
-  boundary it crosses (`deploy/`, `Dockerfile`, the ingress in front).
+  boundary it crosses (`deploy/`, `Dockerfile`, Caddy in front).
 - `go doc` for each library call the change depends on. Write from the doc,
   not from memory.
 - `.coderabbit.yaml` `path_instructions` and `AGENTS.md` **Production
