@@ -142,12 +142,16 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// clientIP prefers X-Forwarded-For's first entry, since the service sits
-// behind a reverse proxy/ingress in deployment; it falls back to the raw
+// clientIP prefers X-Forwarded-For's last entry, which the proxy in front of
+// the service writes from the connection it accepted, so a client cannot
+// choose it the way it can the first entry; it falls back to the raw
 // connection address for local/direct use.
 func clientIP(r *http.Request) string {
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		return strings.TrimSpace(strings.Split(fwd, ",")[0])
+	if fwd := r.Header.Values("X-Forwarded-For"); len(fwd) > 0 {
+		last := fwd[len(fwd)-1]
+		if ip := strings.TrimSpace(last[strings.LastIndex(last, ",")+1:]); ip != "" {
+			return ip
+		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
