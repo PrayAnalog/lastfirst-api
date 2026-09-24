@@ -12,13 +12,22 @@ jobs:
       id-token: write
     steps:
       - id: author
+        if: github.event.pull_request.head.repo.full_name == github.repository
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          SHA: ${{ github.event.pull_request.head.sha }}
+          ACTION: ${{ github.event.action }}
+          PR: ${{ github.event.pull_request.number }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
         run: |
-          message=$(gh api "repos/$REPO/commits/$SHA" --jq .commit.message)
-          if printf '%s\n' "$message" | grep -qi '^Co-Authored-By: Claude'; then
+          trailer='test("(?im)^co-authored-by: claude [^\n]*<noreply@anthropic\\.com>$")'
+          if [ "$ACTION" = synchronize ]; then
+            all=$(gh api "repos/$REPO/compare/$BEFORE...$AFTER" --jq "[.commits[].commit.message | $trailer] | all")
+          else
+            all=$(gh api --paginate "repos/$REPO/pulls/$PR/commits" --jq "[.[].commit.message | $trailer] | all")
+          fi
+          if ! printf '%s\n' "$all" | grep -qx false; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
       - if: steps.author.outputs.skip != 'true'
