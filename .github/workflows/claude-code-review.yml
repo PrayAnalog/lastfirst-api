@@ -26,8 +26,10 @@ jobs:
         run: |
           trailer='test("(?im)^co-authored-by: claude [^\n]*<noreply@anthropic\\.com>$")'
           if [ "$ACTION" = synchronize ]; then
-            prior=$(gh api "repos/$REPO/actions/workflows/claude-code-review.yml/runs?head_sha=$BEFORE&event=pull_request&per_page=100" --jq '[.workflow_runs[] | select(.head_branch == env.HEAD_REF)][0].conclusion // ""')
-            if [ "$prior" = success ]; then
+            prior=$(gh api "repos/$REPO/actions/workflows/claude-code-review.yml/runs?head_sha=$BEFORE&event=pull_request&per_page=100" --jq '[.workflow_runs[] | select(.head_branch == env.HEAD_REF)][0] | "\(.conclusion // "") \(.created_at // "")"')
+            retargeted=$(gh api --paginate "repos/$REPO/issues/$PR/events" --jq '.[] | select(.event == "base_ref_changed") | .created_at')
+            retargeted=$(printf '%s\n' "$retargeted" | sort | tail -n1)
+            if [ "${prior%% *}" = success ] && [[ "$retargeted" < "${prior#* }" ]]; then
               all=$(gh api "repos/$REPO/compare/$BEFORE...$AFTER" --jq "if .status == \"ahead\" and .total_commits == (.commits | length) then [.commits[].commit.message | $trailer] | all else false end")
             else
               all=false
