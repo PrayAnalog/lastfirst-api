@@ -18,14 +18,16 @@ jobs:
           REPO: ${{ github.repository }}
           ACTION: ${{ github.event.action }}
           PR: ${{ github.event.pull_request.number }}
+          COMMITS: ${{ github.event.pull_request.commits }}
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.event.after }}
         run: |
           trailer='test("(?im)^co-authored-by: claude [^\n]*<noreply@anthropic\\.com>$")'
           if [ "$ACTION" = synchronize ]; then
-            all=$(gh api "repos/$REPO/compare/$BEFORE...$AFTER" --jq "[.commits[].commit.message | $trailer] | all")
+            all=$(gh api "repos/$REPO/compare/$BEFORE...$AFTER" --jq "if .total_commits == (.commits | length) then [.commits[].commit.message | $trailer] | all else false end")
           else
-            all=$(gh api --paginate "repos/$REPO/pulls/$PR/commits" --jq "[.[].commit.message | $trailer] | all")
+            all=$(gh api --paginate "repos/$REPO/pulls/$PR/commits" --jq ".[].commit.message | $trailer")
+            [ "$(printf '%s\n' "$all" | grep -c .)" = "$COMMITS" ] || all=false
           fi
           if ! printf '%s\n' "$all" | grep -qx false; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
