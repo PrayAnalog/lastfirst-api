@@ -137,8 +137,16 @@ the script prints `verdict: quiet`, or when the user decides to stop at one of
 the questions above. `verdict: unapproved` means every
 thread is answered but CodeRabbit has not approved; read its latest review
 body, its summary comment and every thread marked `bot-replied` before
-deciding whether anything is still open. A bot that stays out of usage is
-reported to the user as such, not waited on indefinitely.
+deciding whether anything is still open.
+
+`quiet` counts replies, not resolutions. Before reporting a PR as done, check
+that every reply names a commit that changes the code its finding cites, or
+the repository evidence for declining it. The script finds outside-diff
+findings only under "Outside diff range comments", and CodeRabbit also uses
+"Outside the diff" (#32), so read its latest review body yourself. A bot that
+paused, skipped the PR or ran out of usage has not reviewed the head: report it
+to the user as not run, never as clean, rather than waiting on it
+indefinitely.
 
 ## 7. Close the loop
 

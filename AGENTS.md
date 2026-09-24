@@ -80,9 +80,10 @@ between independently triggered events, not only the intended success path.
   workflow permissions wider than needed, secrets exposed to untrusted code,
   and fork pull requests crossing the trust boundary. Do not flag races that
   need concurrent manual actions, or limits no real change reaches.
-- The `Code Review` workflow is one of three reviewers: CodeRabbit reviews
-  every push and Codex reviews each pull request, whatever this workflow
-  skips. Skipping it in a rare sequence is an accepted risk, not a defect.
+- The `Code Review` workflow is one of three reviewers. Skipping it in a rare
+  sequence is an accepted risk, not a defect, once CodeRabbit and Codex have
+  both reviewed the same head. Neither is guaranteed to: each has paused,
+  skipped a PR, or run out of usage before.
 
 ## Verification
 
