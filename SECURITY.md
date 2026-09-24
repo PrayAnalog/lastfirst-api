@@ -20,5 +20,5 @@ known mitigation. Remove real credentials and personal data from every example.
 The maintainers will acknowledge the report within seven days and coordinate
 remediation and disclosure with the reporter.
 
-Never include a real YouTube API key, Kubernetes Secret value, or other service
+Never include a real YouTube API key, `.env` value, or other service
 credential in a report, test case, issue, or pull request.

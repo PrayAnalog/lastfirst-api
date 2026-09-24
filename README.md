@@ -44,11 +44,46 @@ go run ./cmd/server
 
 Built as a single Docker image containing both the compiled Go binary and
 the Vite-built frontend (see `Dockerfile`, build context is the project
-root containing both `backend/` and `frontend/`):
+root containing both `backend/` and `frontend/`).
+
+Production runs on a single DigitalOcean droplet with Docker Compose:
+[Caddy](https://caddyserver.com) terminates TLS for `lastfirst.app` and
+proxies to the app container, whose port is not published on the host. The
+droplet keeps copies of [`deploy/docker-compose.yml`](deploy/docker-compose.yml)
+and [`deploy/Caddyfile`](deploy/Caddyfile) in `/opt/lastfirst`, next to an
+`.env` that provides `YT_API_KEY`.
+
+`deploy/deploy.sh` does not copy those two files; it only rewrites the app
+image tag in the droplet's `docker-compose.yml`. Before deploying, compare them
+with the droplet's copies (the app image tag line is expected to differ):
 
 ```bash
-docker buildx bake -f docker-bake.hcl --push
+ssh root@<droplet-ip> 'cat /opt/lastfirst/Caddyfile' | diff deploy/Caddyfile -
+ssh root@<droplet-ip> 'cat /opt/lastfirst/docker-compose.yml' | diff deploy/docker-compose.yml -
 ```
 
-Kubernetes manifests for deployment (DigitalOcean Kubernetes) are in
-[`deploy/`](deploy).
+If the Caddyfile differs, validate it locally, stage it on the droplet, then
+write it into the live file and reload Caddy, restoring the previous contents
+if the reload fails. The live file is bind-mounted as a single file, so it
+must be written into rather than replaced, or the container keeps reading the
+old one:
+
+```bash
+docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+ssh root@<droplet-ip> 'cat > /opt/lastfirst/Caddyfile.new' < deploy/Caddyfile
+ssh root@<droplet-ip> 'cd /opt/lastfirst && cp Caddyfile Caddyfile.bak && cat Caddyfile.new > Caddyfile && { docker compose exec -T -w /etc/caddy caddy caddy reload || { cat Caddyfile.bak > Caddyfile; false; }; }'
+```
+
+If `docker-compose.yml` differs, apply the change to the droplet's copy by
+hand, keeping its current app image tag, and run
+`docker compose up -d` in `/opt/lastfirst`.
+
+To build, push `ghcr.io/prayanalog/lastfirst:<tag>`, and roll it out on the
+droplet (run from the `backend/` checkout):
+
+```bash
+DEPLOY_HOST=<droplet-ip> deploy/deploy.sh <tag>
+```
+
+This pulls and recreates only the `app` service, after checking that the
+droplet's compose file now names that image; Caddy is left running.

@@ -11,9 +11,9 @@ COPY frontend/ ./
 RUN npm run build
 
 # ---- backend build ----
-# Cross-compiled to linux/amd64 (DOKS node architecture) regardless of the
-# machine this is built on, so plain `docker build` always produces an
-# image DOKS can pull -- no --platform flag needed at build time.
+# Cross-compiled to linux/amd64 (the droplet's architecture) regardless of
+# the machine this is built on, so plain `docker build` always produces an
+# image the droplet can run -- no --platform flag needed at build time.
 FROM golang:1.27-alpine AS backend
 WORKDIR /app
 COPY backend/go.mod backend/go.sum ./
@@ -21,7 +21,7 @@ RUN go mod download
 COPY backend/ ./
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /server ./cmd/server
 
-# ---- runtime (pinned to linux/amd64 to match DOKS nodes) ----
+# ---- runtime (pinned to linux/amd64 to match the droplet) ----
 FROM --platform=linux/amd64 alpine:3.24
 WORKDIR /app
 COPY --from=backend /server ./server
