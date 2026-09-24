@@ -71,7 +71,7 @@ old one:
 ```bash
 docker run --rm -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 ssh root@<droplet-ip> 'cat > /opt/lastfirst/Caddyfile.new' < deploy/Caddyfile
-ssh root@<droplet-ip> 'cd /opt/lastfirst && cp Caddyfile Caddyfile.bak && cat Caddyfile.new > Caddyfile && { docker compose exec -w /etc/caddy caddy caddy reload || { cat Caddyfile.bak > Caddyfile; false; }; }'
+ssh root@<droplet-ip> 'cd /opt/lastfirst && cp Caddyfile Caddyfile.bak && cat Caddyfile.new > Caddyfile && { docker compose exec -T -w /etc/caddy caddy caddy reload || { cat Caddyfile.bak > Caddyfile; false; }; }'
 ```
 
 If `docker-compose.yml` differs, apply the change to the droplet's copy by
