@@ -144,9 +144,9 @@ that every reply names a commit that changes the code its finding cites, or
 the repository evidence for declining it. The script finds outside-diff
 findings only under "Outside diff range comments", and CodeRabbit also uses
 "Outside the diff" (#32), so read its latest review body yourself. A bot that
-paused, skipped the PR or ran out of usage has not reviewed the head: report it
-to the user as not run, never as clean, rather than waiting on it
-indefinitely.
+paused, skipped the PR or ran out of usage without reviewing the current head
+has not reviewed it: report it to the user as not run, never as clean, rather
+than waiting on it indefinitely.
 
 ## 7. Close the loop
 
