@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http/httptest"
+	"strconv"
 	"testing"
 )
 
@@ -27,5 +28,22 @@ func TestClientIP(t *testing.T) {
 				t.Errorf("clientIP() = %q, want %q", got, c.want)
 			}
 		})
+	}
+}
+
+func TestWatchLinksLabelIsRangeOnly(t *testing.T) {
+	ids := make([]string, watchChunk+3)
+	for i := range ids {
+		ids[i] = "v" + strconv.Itoa(i)
+	}
+	links := watchLinks(ids)
+	want := []string{"1–50", "51–53"}
+	if len(links) != len(want) {
+		t.Fatalf("len(watchLinks) = %d, want %d", len(links), len(want))
+	}
+	for i, l := range links {
+		if l.Label != want[i] {
+			t.Errorf("links[%d].Label = %q, want %q", i, l.Label, want[i])
+		}
 	}
 }
