@@ -1,6 +1,6 @@
 ---
 name: ship-change
-description: Take an implementation request in lastfirst-api from requirement to a pull request with no actionable review-bot findings left — split it into one PR per change, implement each on its own branch from origin/main, pass the pre-PR checklist and /code-review, open the PR, then repeat review rounds until every CodeRabbit and Codex finding is fixed or declined with evidence. Use for any request here to implement, fix, harden or change behavior ("구현해", "고쳐", "PR 올려"), even when the request does not mention review, branches or PRs.
+description: Take an implementation request in lastfirst-api from requirement to a pull request with no actionable review-bot findings left — split it into one PR per change, implement each on its own branch from origin/main, pass the pre-PR checklist, /code-review and the OCR review, open the PR, then repeat review rounds until every CodeRabbit and Codex finding is fixed or declined with evidence. Use for any request here to implement, fix, harden or change behavior ("구현해", "고쳐", "PR 올려"), even when the request does not mention review, branches or PRs.
 ---
 
 # Ship a change
@@ -63,7 +63,8 @@ shutdown. For any other change, run `git diff --check`.
 ## 4. Pre-PR gate
 
 1. Work through `.agents/pre-pr-checklist.md` against `git diff <base>...HEAD`.
-2. Run `/code-review` on the branch. Fix what it finds, or note why not.
+2. Run `/code-review` on the branch, and the OCR review in
+   `.agents/ocr-review.md`. Fix what they find, or note why not.
 3. Commit, then record the review with the `touch` command the gate in
    `.claude/hooks/require-code-review.sh` prints when it denies `gh pr create`.
 
@@ -119,8 +120,9 @@ these that applies:
    risk is accepted, and list it under **Known limitations** in the PR body.
 4. **Valid** — fix it in a commit whose message names each defect it fixes,
    including uncommon interleavings that break a production invariant. Re-run
-   step 3 and the checklist over the new diff, then `/code-review` against the
-   base branch, before pushing. Fix what it finds, or note why not.
+   step 3 and the checklist over the new diff, then `/code-review` and the OCR
+   review in `.agents/ocr-review.md` against the base branch, before pushing.
+   Fix what they find, or note why not.
 
 Stop and ask the user before fixing when every finding in a round targets a
 mechanism added by the previous round's fix: present the simpler design that

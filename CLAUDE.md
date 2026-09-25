@@ -7,6 +7,6 @@
   the skill's questions.
 - Before opening a PR, and before every push that answers review feedback, work
   through `.agents/pre-pr-checklist.md` against the branch diff, then run
-  `/code-review` against the base branch. The gate in
-  `.claude/hooks/require-code-review.sh` denies `gh pr create` until both have
-  happened.
+  `/code-review` and the OCR review in `.agents/ocr-review.md` against the base
+  branch. The gate in `.claude/hooks/require-code-review.sh` denies
+  `gh pr create` until all of these have happened.

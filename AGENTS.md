@@ -33,7 +33,8 @@ between independently triggered events, not only the intended success path.
 - Before the first push or PR for an implementation, and before every push
   that answers review feedback, work through `.agents/pre-pr-checklist.md`
   against the branch diff, then run a dedicated code review against the base
-  branch using `.agents/code-review.md`.
+  branch using `.agents/code-review.md`, and the OCR review in
+  `.agents/ocr-review.md`.
 - Verify and fix every actionable correctness, security, reliability, and
   compatibility finding, then rerun required checks.
 - If review fixes materially change behavior, review the updated diff again.
