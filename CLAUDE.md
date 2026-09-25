@@ -9,4 +9,5 @@
   through `.agents/pre-pr-checklist.md` against the branch diff, then run
   `/code-review` and the OCR review in `.agents/ocr-review.md` against the base
   branch. The gate in `.claude/hooks/require-code-review.sh` denies
-  `gh pr create` until all of these have happened.
+  `gh pr create` until the review stamp is present; it does not verify that
+  these steps actually ran.
