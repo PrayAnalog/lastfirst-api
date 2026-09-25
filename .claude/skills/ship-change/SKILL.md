@@ -121,7 +121,7 @@ these that applies:
 4. **Valid** — fix it in a commit whose message names each defect it fixes,
    including uncommon interleavings that break a production invariant. Re-run
    step 3 and the checklist over the new diff, then `/code-review` against the
-   base branch, before pushing.
+   base branch, before pushing. Fix what it finds, or note why not.
 
 Stop and ask the user before fixing when every finding in a round targets a
 mechanism added by the previous round's fix: present the simpler design that
