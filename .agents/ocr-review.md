@@ -14,6 +14,9 @@ OCR_NO_UPDATE=1 npx -y -p @alibaba-group/open-code-review@1.12.9 ocr <args>
 `OCR_NO_UPDATE=1` stops the CLI's background self-update from replacing the
 pinned version.
 
+Commit the change before running it: the range below ends at `HEAD`, so
+uncommitted edits are not reviewed.
+
 1. **Preview.** `ocr delegate preview --format json --from origin/<base> --to HEAD`.
    Its `reviewable_files` are the coverage checklist. Files it excludes are
    out of scope for this review; `/code-review` still covers them.
