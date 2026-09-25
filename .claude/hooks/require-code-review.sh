@@ -73,4 +73,4 @@ stamp="$gitdir/claude-code-review-$sha-$base_key-$merge_base"
 
 [ -f "$stamp" ] && exit 0
 
-deny "Work through .agents/pre-pr-checklist.md against this branch's diff and run /code-review on it before opening the PR. Apply what they find, or record why you are declining it. Then record the review by running \`touch $(printf '%q' "$stamp")\` and retry this command. Applying fixes moves HEAD, so the next commit needs its own review."
+deny "Work through .agents/pre-pr-checklist.md against this branch's diff and run /code-review and the OCR review in .agents/ocr-review.md on it before opening the PR. Apply what they find, or record why you are declining it. Then record the review by running \`touch $(printf '%q' "$stamp")\` and retry this command. Applying fixes moves HEAD, so the next commit needs its own review."
