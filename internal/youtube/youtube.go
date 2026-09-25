@@ -3,6 +3,7 @@ package youtube
 import (
 	"context"
 	"errors"
+	"net/http"
 	"time"
 
 	"google.golang.org/api/googleapi"
@@ -38,8 +39,18 @@ type Client struct {
 	svc *yt.Service
 }
 
+type apiKeyTransport struct {
+	key string
+}
+
+func (t apiKeyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.Header.Set("X-Goog-Api-Key", t.key)
+	return http.DefaultTransport.RoundTrip(req)
+}
+
 func New(ctx context.Context, apiKey string) (*Client, error) {
-	svc, err := yt.NewService(ctx, option.WithAPIKey(apiKey))
+	svc, err := yt.NewService(ctx, option.WithHTTPClient(&http.Client{Transport: apiKeyTransport{key: apiKey}}))
 	if err != nil {
 		return nil, err
 	}
