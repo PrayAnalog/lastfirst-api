@@ -52,14 +52,14 @@ origin/main`; never `git checkout main`.
 
 Make the smallest diff that makes the named behavior hold end to end. Add a
 deterministic test for each invariant the change establishes when one is
-practical, and confirm the test fails without the fix. Then run:
+practical, and confirm the test fails without the fix. For a Go change, run:
 
 ```bash
 test -z "$(gofmt -l .)" && git diff --check && go vet ./... && go build ./... && go test ./...
 ```
 
 plus `go test -race ./...` for shared state, goroutines, cancellation or
-shutdown.
+shutdown. For any other change, run `git diff --check`.
 
 ## 4. Pre-PR gate
 
