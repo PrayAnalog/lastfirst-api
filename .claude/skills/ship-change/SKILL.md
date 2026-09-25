@@ -62,12 +62,11 @@ shutdown. For any other change, run `git diff --check`.
 
 ## 4. Pre-PR gate
 
-1. Work through `.agents/pre-pr-checklist.md` against `git diff <base>...HEAD`.
-2. Run `/code-review` on the branch. Fix what it finds, or note why not.
-3. Commit, then run the OCR review in `.agents/ocr-review.md`, which reviews
-   committed changes only. Fix what it finds, or note why not. Commit each
-   fix and repeat this step on the new `HEAD` before recording the review.
-4. Record the review with the `touch` command the gate in
+1. Commit. Every review below covers `git diff <base>...HEAD`.
+2. Work through `.agents/pre-pr-checklist.md`, then run `/code-review` and the
+   OCR review in `.agents/ocr-review.md`. Fix what they find, or note why not.
+   If any fix changes the diff, commit it and start step 4 again from 1.
+3. Record the review with the `touch` command the gate in
    `.claude/hooks/require-code-review.sh` prints when it denies `gh pr create`.
 
 ## 5. Open the PR

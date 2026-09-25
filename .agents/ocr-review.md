@@ -34,5 +34,4 @@ uncommitted edits are not reviewed.
    valuable. Drop likely false positives.
 
 Handle what it finds the same way as `/code-review` findings: fix each one, or
-record why you are declining it. Commit the fixes and run this review again on
-the new `HEAD`, because it only sees committed changes.
+record why you are declining it.
