@@ -128,9 +128,9 @@ the evidence for declining:
 gh api repos/PrayAnalog/lastfirst-api/pulls/<pr>/comments/<comment-id>/replies -f body="…"
 ```
 
-Findings posted only in a review body ("Outside diff range comments") get a PR
-comment instead. Thread replies are written in Korean, matching CodeRabbit's
-configured language.
+Findings posted only in a review body ("Outside diff range comments" or
+"Outside the diff") get a PR comment instead. Thread replies are written in
+Korean, matching CodeRabbit's configured language.
 
 Push, update the PR body if the approach changed, and wait again. Stop when
 the script prints `verdict: quiet`, or when the user decides to stop at one of
@@ -142,11 +142,11 @@ deciding whether anything is still open.
 `quiet` counts replies, not resolutions. Before reporting a PR as done, re-read
 each finding against the code its reply points to and check that its failure
 scenario is gone, or that the reply gives repository evidence for declining it.
-The script finds outside-diff findings only under "Outside diff range
-comments", and CodeRabbit also uses "Outside the diff" (#32), so read every
-CodeRabbit review body on the PR yourself. A bot that paused, skipped the PR or
-ran out of usage without reviewing the current head has not reviewed it: report
-it to the user as not run, never as clean.
+The script finds outside-diff findings by their "Outside diff range comments"
+and "Outside the diff" (#32) headings, and CodeRabbit may word them otherwise,
+so read every CodeRabbit review body on the PR yourself. A bot that paused,
+skipped the PR or ran out of usage without reviewing the current head has not
+reviewed it: report it to the user as not run, never as clean.
 
 ## 7. Close the loop
 

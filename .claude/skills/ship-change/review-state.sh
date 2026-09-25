@@ -64,7 +64,7 @@ fi
 # they stay open until a PR comment from you follows the review, whichever
 # commit that review was on.
 outside_at=$(gh api --paginate "repos/$repo/pulls/$pr/reviews" \
-  --jq ".[] | select(.user.login == \"coderabbitai[bot]\" and (.body | contains(\"Outside diff range comments\"))) | .submitted_at" | tail -n 1)
+  --jq ".[] | select(.user.login == \"coderabbitai[bot]\" and (.body | test(\"Outside diff range comments|Outside the diff\"))) | .submitted_at" | tail -n 1)
 outside_open=0
 if [ -n "$outside_at" ]; then
   replied=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
