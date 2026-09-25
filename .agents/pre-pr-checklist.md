@@ -118,8 +118,16 @@ A bug fix ships with a deterministic test that fails against the base branch
 and passes on the fix, and the test stays in the commit: a fix checked with a
 test that is then deleted leaves nothing to stop a later edit from restoring
 the bug. Run the new test against the base implementation before pushing and
-name the cases that failed there in the PR body. When a deterministic test is
-genuinely impractical, say why in the PR body instead.
+name the cases that failed there in the PR body. The failure has to be the
+bug itself: the assertion that names it, or the panic or race report the bug
+directly causes. A test that does not compile, or whose fixture breaks, on the
+base proves nothing. When the fix adds code the base does not have, test
+through a contract the base already has, so the test runs against the unfixed
+behavior. When a deterministic test is genuinely impractical, say why in the
+PR body instead.
+
+Check every test the diff adds, changes or removes against **Test changes** in
+`.agents/code-review.md`; Codex reviews tests against it.
 
 ## 10. Answer each review round in the thread
 
