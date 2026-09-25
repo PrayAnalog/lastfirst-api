@@ -58,7 +58,8 @@ reviews:
         fork pull requests, and conditions a fork pull request can control.
         Do not flag races that need concurrent manual actions, or limits no
         real change reaches. The Code Review workflow is one of three
-        reviewers, so a rare skip is an accepted risk.
+        reviewers, so a rare skip is an accepted risk once CodeRabbit and
+        Codex have both reviewed that head.
   tools:
     golangci-lint:
       enabled: true

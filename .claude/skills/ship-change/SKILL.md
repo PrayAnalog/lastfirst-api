@@ -93,8 +93,8 @@ until .claude/skills/ship-change/review-state.sh <pr> | grep -Eq '^verdict: (fin
 ```
 
 Run the loop in the background (Monitor) and move on to another PR meanwhile.
-On `verdict: blocked`, post the comment the script names for the blocked bot
-and start waiting again.
+On `verdict: blocked`, post the comment the script names for the blocked bot,
+then ask the user whether to wait for it or finish without it.
 
 For each open finding, read the code it points at, then take the first of
 these that applies:
@@ -137,8 +137,16 @@ the script prints `verdict: quiet`, or when the user decides to stop at one of
 the questions above. `verdict: unapproved` means every
 thread is answered but CodeRabbit has not approved; read its latest review
 body, its summary comment and every thread marked `bot-replied` before
-deciding whether anything is still open. A bot that stays out of usage is
-reported to the user as such, not waited on indefinitely.
+deciding whether anything is still open.
+
+`quiet` counts replies, not resolutions. Before reporting a PR as done, re-read
+each finding against the code its reply points to and check that its failure
+scenario is gone, or that the reply gives repository evidence for declining it.
+The script finds outside-diff findings only under "Outside diff range
+comments", and CodeRabbit also uses "Outside the diff" (#32), so read every
+CodeRabbit review body on the PR yourself. A bot that paused, skipped the PR or
+ran out of usage without reviewing the current head has not reviewed it: report
+it to the user as not run, never as clean.
 
 ## 7. Close the loop
 
