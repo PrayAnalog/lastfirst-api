@@ -9,9 +9,10 @@
 #   verdict: findings    a review thread, or a CodeRabbit outside-diff
 #                        finding, has no reply from you yet
 #
-# Run it from the worktree that pushed the head: Codex answers a clean review
-# with a reaction on the PR rather than on a commit, so only the local push
-# time says which head that reaction is about.
+# Run it from the worktree that pushed the head: Codex usually answers a clean
+# review with a reaction on the PR rather than on a commit, so only the local
+# push time says which head that reaction is about. A clean-review comment that
+# names its commit needs no push time.
 #   verdict: unapproved  every thread is answered but CodeRabbit has not
 #                        approved this head; read its latest review body
 #                        and any thread marked bot-replied
@@ -77,6 +78,12 @@ fi
 
 codex_review=$(gh api --paginate "repos/$repo/pulls/$pr/reviews" \
   --jq ".[] | select(.user.login == \"chatgpt-codex-connector[bot]\" and .commit_id == \"$head\") | .id")
+# A clean pass is sometimes a comment naming the commit it reviewed instead of
+# a reaction, which ties it to this head without needing the push time.
+codex_clean=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
+  --jq ".[] | select(.user.login == \"chatgpt-codex-connector[bot]\" and (.body | contains(\"Didn't find any major issues\")))
+    | (.body | capture(\"Reviewed commit:\\\\*\\\\* \`(?<sha>[0-9a-f]{7,40})\`\").sha) as \$sha
+    | select(\"$head\" | startswith(\$sha)) | .id")
 codex_thumb=""
 codex_limit=""
 if [ -n "$pushed" ]; then
@@ -91,6 +98,8 @@ if [ -n "$pushed" ]; then
 fi
 if [ -n "$codex_review" ]; then
   echo "codex: posted findings on this head"
+elif [ -n "$codex_clean" ]; then
+  echo "codex: no suggestions for this head"
 elif [ -z "$pushed" ]; then
   echo "codex: cannot attribute its reactions without this head's push time; run from the worktree that pushed it"
   reported=0
