@@ -120,7 +120,8 @@ these that applies:
    risk is accepted, and list it under **Known limitations** in the PR body.
 4. **Valid** — fix it in a commit whose message names each defect it fixes,
    including uncommon interleavings that break a production invariant. Re-run
-   step 3 and the checklist over the new diff before pushing.
+   step 3 and the checklist over the new diff, then `/code-review` against the
+   base branch, before pushing.
 
 Stop and ask the user before fixing when every finding in a round targets a
 mechanism added by the previous round's fix: present the simpler design that
