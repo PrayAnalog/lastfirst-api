@@ -69,14 +69,30 @@ shutdown. For any other change, run `git diff --check`.
 
 ## 5. Open the PR
 
+First draw the change with the `pr-lens` skill (`.claude/skills/pr-lens`):
+write `.pr-lens/graph.json` from `git diff --find-renames <base>...HEAD`,
+validate it, and render it in the light theme. Run the CLI as
+`npx @coldtea/pr-lens-cli@0.7.0` wherever the skill writes `@latest`, and
+change that version only in the same PR that updates the vendored skill.
+Attaching needs GitHub CLI 2.99 or later; check `gh --version`.
+
 ```bash
 git push -u origin HEAD
-gh pr create --base <main-or-parent> --title "…" --body-file <file>
+gh pr create --base <main-or-parent> --title "…" --body-file <file> \
+  --attach .pr-lens/<view>-light-<hash>.svg
 ```
+
+Repeat `--attach` for each diagram the body references. When an upload fails,
+`gh` still creates the PR, prints its URL and exits non-zero; run
+`gh pr edit <pr> --body-file <file>` with the same `--attach` flags rather than
+creating the PR again.
 
 The body has these sections, in English:
 
 - **Problem** — what fails today, as a concrete scenario.
+- **Diagram** — the architecture view, then the data-flow view when the change
+  has a sequence worth following, each as `![alt](.pr-lens/<file>.svg)` with
+  the same path passed to `--attach`.
 - **Approach** — what changed and why this shape, including every bound and
   the event it counts from.
 - **Validation** — the commands run and what was not exercised.
