@@ -98,10 +98,17 @@ The body has these sections, in English:
   the same path passed to `--attach`.
 - **Approach** — what changed and why this shape, including every bound and
   the event it counts from.
-- **Validation** — the commands run and what was not exercised.
+- **Validation** — what section 3 did not cover: commands skipped or added,
+  tests added and whether they fail without the fix, and what was not
+  exercised. Do not list the section 3 commands or the section 4 reviews
+  when they ran as written.
 - **Pre-deploy checks** — anything that depends on infrastructure this
-  repository does not define, with the command that verifies it.
-- **Out of scope** — related work left to other PRs, naming them.
+  repository does not define, with the command that verifies it. Omit the
+  section when there are none.
+- **Out of scope** — related work this PR leaves to other PRs, naming them.
+  Name only PRs this one builds on or overlaps with; list a whole series in its
+  tracking issue, not in every PR. Omit the section when there is nothing to
+  name.
 - **Known limitations** — findings declined as accepted risk, each with the
   sequence it needs. Omit the section when there are none.
 
