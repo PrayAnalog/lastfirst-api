@@ -72,8 +72,10 @@ shutdown. For any other change, run `git diff --check`.
 
 First draw the change with the `pr-lens` skill (`.claude/skills/pr-lens`):
 write `.pr-lens/graph.json` from `git diff --find-renames <base>...HEAD`,
-validate it, and render it in the light theme. Attaching needs GitHub CLI 2.99
-or later; check `gh --version`.
+validate it, and render it in the light theme. Run the CLI as
+`npx @coldtea/pr-lens-cli@0.7.0` wherever the skill writes `@latest`, and
+change that version only in the same PR that updates the vendored skill.
+Attaching needs GitHub CLI 2.99 or later; check `gh --version`.
 
 ```bash
 git push -u origin HEAD
