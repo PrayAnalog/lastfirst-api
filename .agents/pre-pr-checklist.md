@@ -128,6 +128,5 @@ state, permissions or triggers, decline accepted risks with the sequence they
 need, and fix the other valid findings in a commit. Then reply to every thread
 with the commit that addressed it and what changed, or with the reason it is
 being declined.
-Re-run this checklist over the new diff, then a code review and the OCR review
-in `.agents/ocr-review.md` against the base branch, before pushing. Fix what the
-reviews find, or record why not.
+Re-run this checklist over the new diff, then a code review against the base
+branch, before pushing. Fix what the review finds, or record why not.

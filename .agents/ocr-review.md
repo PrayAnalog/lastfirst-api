@@ -1,8 +1,8 @@
 # OCR Delegation Review
 
-A second local review that runs alongside `/code-review` (or
-`.agents/code-review.md`). Open Code Review (OCR) selects the reviewable files
-and resolves a rule checklist for each; you review each file against its
+A second local review that runs alongside `/code-review` in Claude Code
+sessions. Open Code Review (OCR) selects the reviewable files and resolves a
+rule checklist for each; you review each file against its
 checklist with your own model. OCR makes no LLM call and needs no API key.
 
 Run OCR through the pinned package, from the repository root:
