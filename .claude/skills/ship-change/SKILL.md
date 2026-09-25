@@ -90,7 +90,8 @@ Repeat `--attach` for each diagram the body references. When an upload fails,
 `gh pr edit <pr> --body-file <file>` with the same `--attach` flags rather than
 creating the PR again.
 
-The body has these sections, in English:
+Write the title and body in Korean. The body has these sections, under the
+English headings below:
 
 - **Problem** — what fails today, as a concrete scenario.
 - **Diagram** — the architecture view, then the data-flow view when the change
