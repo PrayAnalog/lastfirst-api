@@ -118,12 +118,14 @@ A bug fix ships with a deterministic test that fails against the base branch
 and passes on the fix, and the test stays in the commit: a fix checked with a
 test that is then deleted leaves nothing to stop a later edit from restoring
 the bug. Run the new test against the base implementation before pushing and
-name the cases that failed there in the PR body. The failure has to come from
-the assertion that names the bug: a test that does not compile, or whose
-fixture breaks, on the base proves nothing. When the code under test does not
-exist on the base, add it first as a stub that returns zero values and watch
-the assertion fail against the stub. When a deterministic test is genuinely
-impractical, say why in the PR body instead.
+name the cases that failed there in the PR body. The failure has to be the
+bug itself: the assertion that names it, or the panic or race report the bug
+directly causes. A test that does not compile, or whose fixture breaks, on the
+base proves nothing. When the code under test does not exist on the base, add
+a minimal temporary scaffold that lets the test reach its assertion and
+returns something other than the expected result, and watch the assertion fail
+against it. When a deterministic test is genuinely impractical, say why in the
+PR body instead.
 
 Check every test the diff adds, changes or removes against **Test changes** in
 `.agents/code-review.md`; Codex reviews tests against it.

@@ -53,8 +53,8 @@ origin/main`; never `git checkout main`.
 
 Make the smallest diff that makes the named behavior hold end to end. Add a
 deterministic test for each invariant the change establishes when one is
-practical, and confirm the test fails on its assertion without the fix. For a
-Go change, run:
+practical, and confirm the test fails without the fix for the reason the bug
+causes, not on a compile or fixture error. For a Go change, run:
 
 ```bash
 test -z "$(gofmt -l .)" && git diff --check && go vet ./... && go build ./... && go test ./...
