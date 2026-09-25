@@ -12,10 +12,9 @@ import (
 
 func TestAPIKeyStaysOutOfTransportErrors(t *testing.T) {
 	const key = "test-secret-api-key"
-	var gotHeader, gotQuery string
+	got := make(chan *http.Request, 1)
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotHeader = r.Header.Get("X-Goog-Api-Key")
-		gotQuery = r.URL.Query().Get("key")
+		got <- r.Clone(context.Background())
 		conn, _, err := w.(http.Hijacker).Hijack()
 		if err != nil {
 			t.Errorf("hijack: %v", err)
@@ -45,10 +44,11 @@ func TestAPIKeyStaysOutOfTransportErrors(t *testing.T) {
 	if strings.Contains(err.Error(), key) {
 		t.Errorf("error exposes API key: %v", err)
 	}
-	if gotQuery != "" {
-		t.Errorf("key query parameter = %q, want none", gotQuery)
+	r := <-got
+	if q := r.URL.Query().Get("key"); q != "" {
+		t.Errorf("key query parameter = %q, want none", q)
 	}
-	if gotHeader != key {
-		t.Errorf("X-Goog-Api-Key = %q, want %q", gotHeader, key)
+	if h := r.Header.Get("X-Goog-Api-Key"); h != key {
+		t.Errorf("X-Goog-Api-Key = %q, want %q", h, key)
 	}
 }
