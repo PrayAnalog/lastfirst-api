@@ -41,8 +41,10 @@ origin/main`; never `git checkout main`.
 - `go doc` for each library call the change depends on. Write from the doc,
   not from memory.
 - `.coderabbit.yaml` `path_instructions` and `AGENTS.md` **Production
-  boundaries** for the paths involved. They are the rules the bots review
-  against, so they are authoring rules here.
+  boundaries** for the paths involved, and **Test changes** in
+  `.agents/code-review.md` when the change adds, changes or removes a test.
+  They are the rules the bots review against, so they are authoring rules
+  here.
 - When the change edits a process document (skill, checklist, `AGENTS.md`,
   `CLAUDE.md`), every other document that prescribes the same step. Make them
   agree in the same PR.
@@ -51,7 +53,8 @@ origin/main`; never `git checkout main`.
 
 Make the smallest diff that makes the named behavior hold end to end. Add a
 deterministic test for each invariant the change establishes when one is
-practical, and confirm the test fails without the fix. For a Go change, run:
+practical, and confirm the test fails on its assertion without the fix. For a
+Go change, run:
 
 ```bash
 test -z "$(gofmt -l .)" && git diff --check && go vet ./... && go build ./... && go test ./...
