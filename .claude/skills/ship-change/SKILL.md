@@ -101,7 +101,7 @@ The body has these sections, in English:
 - **Validation** — what section 3 did not cover: commands skipped or added,
   tests added and whether they fail without the fix, and what was not
   exercised. Do not list the section 3 commands or the section 4 reviews
-  when they ran as written.
+  when they ran as written, and omit the section when nothing else is left.
 - **Pre-deploy checks** — anything that depends on infrastructure this
   repository does not define, with the command that verifies it. Omit the
   section when there are none.
