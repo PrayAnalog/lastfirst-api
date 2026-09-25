@@ -13,8 +13,10 @@ reviews:
   path_instructions:
     - path: "**/*.go"
       instructions: |
-        Flag returned errors that are dropped or swallowed, and values used
-        before their error is checked.
+        Flag a dropped or swallowed error when ignoring it changes state, the
+        response, or resource cleanup, or hides a failure someone could act
+        on. Flag values used before their error is checked. Do not flag a failed write to a client that
+        has gone away, such as a health handler's w.Write.
         Flag request-scoped work that does not propagate the incoming
         context.Context.
         Flag shared state mutated without synchronization.
