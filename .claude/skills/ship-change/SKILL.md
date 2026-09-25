@@ -65,8 +65,8 @@ shutdown. For any other change, run `git diff --check`.
 1. Commit. Every review below covers `git diff <base>...HEAD`.
 2. Work through `.agents/pre-pr-checklist.md`, then run `/code-review` and the
    OCR review in `.agents/ocr-review.md`. Fix what they find, or note why not.
-   If any fix changes the diff, go back to step 3 with it, then through this
-   step again.
+   If any fix changes the diff, take it back through section 3 (Implement and
+   verify), then through this section again.
 3. Record the review with the `touch` command the gate in
    `.claude/hooks/require-code-review.sh` prints when it denies `gh pr create`.
 
@@ -122,7 +122,7 @@ these that applies:
    risk is accepted, and list it under **Known limitations** in the PR body.
 4. **Valid** — fix it in a commit whose message names each defect it fixes,
    including uncommon interleavings that break a production invariant. Take
-   the new diff through steps 3 and 4 again before pushing.
+   the new diff through sections 3 and 4 again before pushing.
 
 Stop and ask the user before fixing when every finding in a round targets a
 mechanism added by the previous round's fix: present the simpler design that
