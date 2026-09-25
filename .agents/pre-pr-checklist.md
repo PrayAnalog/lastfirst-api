@@ -7,8 +7,8 @@ that reached review in this repository at least once.
 ## 0. The diff is one change
 
 Describe the diff in one sentence. If the sentence needs "and" to cover two
-behaviors that could be reverted separately, split the branch: #20 carried
-seven such behaviors and every fix to one of them reopened review of all the
+behaviors that could be reverted separately, split the branch: with several
+such behaviors in one PR, every fix to one of them reopens review of all the
 others. A change whose bounds are written over another change's bounds is
 stacked on that change's branch rather than folded into it. Merged without the
 PRs stacked above it, this diff must not break or worsen a production invariant
@@ -115,12 +115,11 @@ zero value is correct.
 ## 9. Commit a regression test that fails on the base
 
 A bug fix ships with a deterministic test that fails against the base branch
-and passes on the fix. #63 closed a spoofable rate-limit key, checked the fix
-with a table test, and deleted the test before committing; review sent it back
-because nothing would stop a later edit from restoring the bypass. Run the new
-test against the base implementation before pushing and name the cases that
-failed there in the PR body. When a deterministic test is genuinely
-impractical, say why in the PR body instead.
+and passes on the fix, and the test stays in the commit: a fix checked with a
+test that is then deleted leaves nothing to stop a later edit from restoring
+the bug. Run the new test against the base implementation before pushing and
+name the cases that failed there in the PR body. When a deterministic test is
+genuinely impractical, say why in the PR body instead.
 
 ## 10. Answer each review round in the thread
 

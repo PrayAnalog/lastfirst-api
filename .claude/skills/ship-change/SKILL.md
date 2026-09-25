@@ -7,11 +7,10 @@ description: Take an implementation request in lastfirst-api from requirement to
 
 In this repository a change is finished when no actionable CodeRabbit or Codex
 finding remains on its PR and every other finding is declined with evidence,
-not when it compiles. PRs #7, #17 and #20 each "worked"
-and each went through rounds of findings; #20 bundled seven requirements and
-drew 24 comments, because every fix in one area started a new round across all
-of them. This skill is the process that avoids that. Follow every step; do not
-wait to be told the details.
+not when it compiles. A PR that bundles several requirements draws review
+rounds across all of them, because every fix in one area reopens review of the
+rest; this skill keeps each change small enough to converge. Follow every
+step.
 
 ## 1. Split the request into changes
 
@@ -125,8 +124,7 @@ these that applies:
 Stop and ask the user before fixing when every finding in a round targets a
 mechanism added by the previous round's fix: present the simpler design that
 does not need that mechanism. After the third round, ask the user whether to
-continue before every further round. PR #64 took nine rounds; seven of its
-findings came from one mechanism added mid-review.
+continue before every further round.
 
 Answer every finding in its own thread, naming the commit and what changed, or
 the evidence for declining:
@@ -150,7 +148,7 @@ deciding whether anything is still open.
 each finding against the code its reply points to and check that its failure
 scenario is gone, or that the reply gives repository evidence for declining it.
 The script finds outside-diff findings by their "Outside diff range comments"
-and "Outside the diff" (#32) headings, and CodeRabbit may word them otherwise,
+and "Outside the diff" headings, and CodeRabbit may word them otherwise,
 so read every CodeRabbit review body on the PR yourself. A bot that paused,
 skipped the PR or ran out of usage without reviewing the current head has not
 reviewed it: report it to the user as not run, never as clean.
