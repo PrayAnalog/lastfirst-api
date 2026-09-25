@@ -37,11 +37,11 @@ provider bodies or credential-bearing URLs to recover diagnostic detail.
 ## 3. Derive coupled limits from one source and order them
 
 List every bound the change touches — handler deadline, `ReadHeaderTimeout`,
-`ReadTimeout`, `WriteTimeout`, `IdleTimeout`, shutdown deadline,
-`terminationGracePeriodSeconds`, `preStop`, probe timings, the ingress proxy
-timeouts in front of the handler — next to the event each one starts counting
-from. Bounds that start at different events are not comparable without the gap
-between those events as headroom. Write each wider bound as an expression over
+`ReadTimeout`, `WriteTimeout`, `IdleTimeout`, shutdown deadline, the
+container's `stop_grace_period`, and the Caddy timeouts in front of the
+handler — next to the event each one starts counting from. Bounds that start
+at different events are not comparable without the gap between those events
+as headroom. Write each wider bound as an expression over
 the narrower one so the ordering cannot drift when one value is edited.
 
 ## 4. Claim a metered resource per call, not per prediction
@@ -69,26 +69,20 @@ there to protect.
 
 ## 5. Check the far side of every boundary the change touches
 
-An application-side lifecycle change is unfinished until the manifests agree:
-closing the listener on `SIGTERM` still returns errors to clients while the
-pod is in the Service endpoint list, so the drain needs a `preStop` delay and
-a grace period that covers it. The same applies to trusted headers (who sets
-it), probes (what they exercise), and image entrypoints (what receives the
-signal).
+An application-side lifecycle change is unfinished until `deploy/` agrees:
+`docker compose up -d app` sends `SIGTERM` to the old container and kills it
+once its `stop_grace_period` (10s when unset) runs out, so the drain has to fit
+inside that, and Caddy retries a request whose upstream refuses the connection
+only for its `lb_try_duration`. The same applies to trusted headers (who sets
+it), health checks (what they exercise), and image entrypoints (what receives
+the signal).
 
 Two far sides are easy to miss. A limit the application enforces — body size,
-request duration — is enforced first by the ingress in front of it when the
-ingress limit is tighter, and clients then get the ingress's answer instead of
-the application's. And state kept in process memory — the daily budget, the
-per-IP limiter — is multiplied by every pod alive at once, which includes the
-old pod still draining during a rollout or eviction.
-
-A strategy that sequences revision updates may not govern replacement after an
-ordinary pod deletion. Verify the workload controller's behavior for rollouts,
-evictions, and deletions. If the workload kind or object identity changes,
-remember that `kubectl apply` does not prune the old controller: document a
-scale-to-zero, wait-for-deletion, and removal sequence before creating the new
-one.
+request duration — is enforced first by Caddy when Caddy's limit is tighter,
+and clients then get Caddy's answer instead of the application's. And state
+kept in process memory — the daily budget, the per-IP limiter — is multiplied
+by every app container alive at once; keep the one-container rule in
+`AGENTS.md` **Production boundaries** true for every change to `deploy/`.
 
 ## 6. Re-read the authoring rules for the paths touched
 
@@ -99,10 +93,10 @@ rules, not just review rules.
 ## 7. Separate what this repository can fix
 
 A finding that depends on infrastructure this repository does not define —
-load balancer source-IP preservation, ingress controller labels — is not fixed
-by guessing at a manifest. Record it in the PR body as a pre-deploy check or an
-explicit non-goal, with the reason it cannot be settled here, and answer the
-review thread with that same repository evidence.
+the droplet's firewall, DNS, or its `.env` — is not fixed by guessing at a
+manifest. Record it in the PR body as a pre-deploy check or an explicit
+non-goal, with the reason it cannot be settled here, and answer the review
+thread with that same repository evidence.
 
 ## 8. Decide every default the diff makes explicit
 
