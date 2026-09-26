@@ -82,6 +82,12 @@ validate it, and render it in the light theme. Run the CLI as
 change that version only in the same PR that updates the vendored skill.
 Attaching needs GitHub CLI 2.99 or later; check `gh --version`.
 
+Write the body to a file named for this PR's branch in the session scratchpad,
+not to a shared path such as `.pr-lens/body.md`, which other sessions in the
+worktree overwrite. Write it in its own step, never in the command that runs
+`gh pr create`: the gate denies that whole command, so a file written inside it
+is never written and the retry sends whatever the path held before.
+
 ```bash
 git push -u origin HEAD
 gh pr create --base <main-or-parent> --title "…" --body-file <file> \
@@ -92,6 +98,12 @@ Repeat `--attach` for each diagram the body references. When an upload fails,
 `gh` still creates the PR, prints its URL and exits non-zero; run
 `gh pr edit <pr> --body-file <file>` with the same `--attach` flags rather than
 creating the PR again.
+
+Then read the body back with `gh pr view <pr> --json body` and check that it is
+this PR's text and that each diagram sits under **Diagram** as an uploaded
+asset. `gh` appends an attachment the body does not reference to the end of the
+body, so a diagram at the bottom means the body is not the one written for this
+PR.
 
 Write the title and body in Korean. The body has these sections, under the
 English headings below:
