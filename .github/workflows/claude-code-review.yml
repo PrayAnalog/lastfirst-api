@@ -24,8 +24,10 @@ jobs:
           OWNER: ${{ github.repository_owner }}
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.event.after }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           trailer='test("(?im)^co-authored-by: claude [^\n]*<noreply@anthropic\\.com>$")'
+          all=false
           if [ "$ACTION" = synchronize ]; then
             prior=$(gh api "repos/$REPO/actions/workflows/claude-code-review.yml/runs?head_sha=$BEFORE&event=pull_request&per_page=100" --jq '[.workflow_runs[] | select(.head_branch == env.HEAD_REF)][0] | "\(.conclusion // "") \(.created_at // "")"')
             retargeted=$(gh api --paginate "repos/$REPO/issues/$PR/events" --jq '.[] | select(.event == "base_ref_changed") | .created_at')
@@ -33,12 +35,13 @@ jobs:
             prs=$(gh api -X GET "repos/$REPO/pulls" -f state=all -f head="$OWNER:$HEAD_REF" --jq length)
             if [ "$prs" = 1 ] && [ "${prior%% *}" = success ] && [[ "$retargeted" < "${prior#* }" ]]; then
               all=$(gh api "repos/$REPO/compare/$BEFORE...$AFTER" --jq "if .status == \"ahead\" and .total_commits == (.commits | length) then [.commits[].commit.message | $trailer] | all else false end")
-            else
-              all=false
             fi
-          else
-            all=$(gh api --paginate "repos/$REPO/pulls/$PR/commits" --jq ".[].commit.message | $trailer")
+          fi
+          if printf '%s\n' "$all" | grep -qx false; then
+            commits=$(gh api --paginate "repos/$REPO/pulls/$PR/commits" --jq ".[] | \"\(.sha) \(.commit.message | $trailer)\"")
+            all=$(printf '%s\n' "$commits" | cut -d' ' -f2)
             [ "$(printf '%s\n' "$all" | grep -c .)" = "$COMMITS" ] || all=false
+            printf '%s\n' "$commits" | grep -q "^$HEAD_SHA " || all=false
           fi
           if ! printf '%s\n' "$all" | grep -qx false; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
