@@ -75,4 +75,7 @@ Compose stops a container with the `stop_grace_period` it was created
 with, so a new grace period only covers containers created after the edit.
 A tag deploy recreates only the app container, so a service added to the
 compose file starts once it is brought up by hand with
-`docker compose up -d <service>`.
+`docker compose up -d <service>`. The same applies to a changed logging
+driver: Docker fixes it when a container is created, so bring up
+`vector` first, then recreate each service whose `logging` changed, such
+as `caddy`, with `docker compose up -d <service>`.
