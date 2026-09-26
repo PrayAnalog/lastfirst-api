@@ -32,9 +32,9 @@ func main() {
 	serveErr := make(chan error, 1)
 	go func() { serveErr <- server.ListenAndServe() }()
 
+	var listenErr error
 	select {
-	case err := <-serveErr:
-		log.Fatal(err)
+	case listenErr = <-serveErr:
 	case <-sigCtx.Done():
 	}
 
@@ -43,8 +43,11 @@ func main() {
 	cancel()
 	stop()
 
-	if err := <-serveErr; !errors.Is(err, http.ErrServerClosed) {
-		log.Fatal(err)
+	if listenErr == nil {
+		listenErr = <-serveErr
+	}
+	if !errors.Is(listenErr, http.ErrServerClosed) {
+		log.Fatal(listenErr)
 	}
 	if shutdownErr != nil {
 		log.Fatal(shutdownErr)
