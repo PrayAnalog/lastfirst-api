@@ -7,8 +7,6 @@ services:
       YT_API_KEY: ${YT_API_KEY:?YT_API_KEY is required}
     expose:
       - "8080"
-    logging:
-      driver: local
   caddy:
     image: caddy:2
     restart: unless-stopped
@@ -18,8 +16,6 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
-    logging:
-      driver: local
   victorialogs:
     image: victoriametrics/victoria-logs:v1.52.0
     restart: unless-stopped
