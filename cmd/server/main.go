@@ -2,13 +2,19 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"ytreverse/internal/config"
 	"ytreverse/internal/httpapi"
 	"ytreverse/internal/youtube"
 )
+
+const shutdownTimeout = 5 * time.Second
 
 func main() {
 	ctx := context.Background()
@@ -20,5 +26,30 @@ func main() {
 	}
 
 	srv := httpapi.New(yt, cfg.StaticDir)
-	log.Fatal(http.ListenAndServe(cfg.Addr, srv.Handler()))
+	server := &http.Server{Addr: cfg.Addr, Handler: srv.Handler()}
+
+	sigCtx, stop := signal.NotifyContext(ctx, syscall.SIGTERM)
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- server.ListenAndServe() }()
+
+	var listenErr error
+	select {
+	case listenErr = <-serveErr:
+	case <-sigCtx.Done():
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)
+	shutdownErr := server.Shutdown(shutdownCtx)
+	cancel()
+	stop()
+
+	if listenErr == nil {
+		listenErr = <-serveErr
+	}
+	if !errors.Is(listenErr, http.ErrServerClosed) {
+		log.Fatal(listenErr)
+	}
+	if shutdownErr != nil {
+		log.Fatal(shutdownErr)
+	}
 }
