@@ -18,6 +18,8 @@ printf '%s' "$cmd" | grep -Eq '(^|[;&|(])[[:space:]]*gh[[:space:]]+pr[[:space:]]
 sha=$(git rev-parse --verify HEAD 2>/dev/null) || exit 0
 gitdir=$(git rev-parse --absolute-git-dir 2>/dev/null) || exit 0
 
+. "$(dirname "$0")/review-stamp.sh"
+
 deny() {
   jq -n --arg reason "$1" '{
     hookSpecificOutput: {
@@ -47,30 +49,8 @@ if [ -n "$head_ref" ] && [ "$(git rev-parse --verify "$head_ref^{commit}" 2>/dev
 fi
 
 base_ref=$(flag_value --base)
-if [ -z "$base_ref" ]; then
-  base_ref=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)
-  [ -n "$base_ref" ] || base_ref=main
-fi
-base_ref=${base_ref#origin/}
-
-base_sha=$(git rev-parse --verify "origin/$base_ref^{commit}" 2>/dev/null) ||
-  base_sha=$(git rev-parse --verify "$base_ref^{commit}" 2>/dev/null) ||
-  deny "This gate reviews the diff against $base_ref, which does not resolve to a commit here. Fetch it, or name a base this checkout has."
-
-merge_base=$(git merge-base "$sha" "$base_sha" 2>/dev/null) ||
-  deny "$sha and $base_ref share no history, so there is no diff this gate can attest."
-
-# What gets reviewed is the three-dot diff, merge_base..HEAD, so both of those
-# are in the key: a new commit or a rebase moves one end or the other and the
-# stamp will not exist yet. The base tip itself is deliberately not in the key,
-# because main advancing over commits this branch does not touch leaves that
-# diff untouched too, and re-reviewing it would find nothing. The base *ref* is
-# in the key, hashed because it can contain a slash, so that targeting a
-# different branch needs its own review even when the two share a merge base.
-base_key=$(printf '%s' "$base_ref" | git hash-object --stdin 2>/dev/null | cut -c1-12)
-[ -n "$base_key" ] || deny "Could not derive a stamp key for base $base_ref."
-stamp="$gitdir/claude-code-review-$sha-$base_key-$merge_base"
+stamp=$(review_stamp "$sha" "$gitdir" "$base_ref") || deny "$stamp"
 
 [ -f "$stamp" ] && exit 0
 
-deny "Work through .agents/pre-pr-checklist.md against this branch's diff and run /code-review and the OCR review in .agents/ocr-review.md on it before opening the PR. Apply what they find, or record why you are declining it. Then record the review by running \`touch $(printf '%q' "$stamp")\` and retry this command. Applying fixes moves HEAD, so the next commit needs its own review."
+deny "Work through .agents/pre-pr-checklist.md against this branch's diff and run /code-review and the OCR review in .agents/ocr-review.md on it before opening the PR. Apply what they find, or record why you are declining it. Then record the review by running \`.claude/skills/ship-change/record-review.sh${base_ref:+ $(printf '%q' "$base_ref")}\` as a command of its own and retry this command. Applying fixes moves HEAD, so the next commit needs its own review."
