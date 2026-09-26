@@ -16,5 +16,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
+    logging:
+      driver: local
 volumes:
   caddy_data:
