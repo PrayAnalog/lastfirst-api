@@ -11,7 +11,7 @@ supported.
 Do not open a public issue with exploit details, credentials, personal data, or
 a working proof of concept. External reporters should use **Report a
 vulnerability** on the repository's **Security** tab when that option is
-available; otherwise, email `agy0304@gmail.com` with the subject
+available; otherwise, email `revytplaylist@gmail.com` with the subject
 `[lastfirst-api security]`. Repository administrators and security managers may
 instead create a draft security advisory directly.
 
