@@ -2,10 +2,13 @@ package httpapi
 
 import (
 	"context"
+	"io"
 	"log/slog"
 	"net/http"
 	"time"
 )
+
+const maxLoggedPath = 256
 
 type requestLogKey struct{}
 
@@ -32,6 +35,13 @@ func (w *statusWriter) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
+func (w *statusWriter) ReadFrom(r io.Reader) (int64, error) {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	return io.Copy(w.ResponseWriter, r)
+}
+
 func (w *statusWriter) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
 }
@@ -47,9 +57,13 @@ func logRequests(next http.Handler) http.Handler {
 		if status == 0 {
 			status = http.StatusOK
 		}
+		path := r.URL.Path
+		if len(path) > maxLoggedPath {
+			path = path[:maxLoggedPath]
+		}
 		attrs := []any{
 			"method", r.Method,
-			"path", r.URL.Path,
+			"path", path,
 			"status", status,
 			"duration_ms", float64(time.Since(start).Microseconds()) / 1000,
 			"ip", clientIP(r),

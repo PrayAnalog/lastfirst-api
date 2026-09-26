@@ -13,17 +13,42 @@ import (
 	"ytreverse/internal/youtube"
 )
 
-func TestHandlerLogsEachRequest(t *testing.T) {
+func captureLogs(t *testing.T) *bytes.Buffer {
+	t.Helper()
 	var buf bytes.Buffer
 	prev := slog.Default()
 	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, nil)))
 	t.Cleanup(func() { slog.SetDefault(prev) })
+	return &buf
+}
 
+func newTestHandler(t *testing.T) http.Handler {
+	t.Helper()
 	yt, err := youtube.New(context.Background(), "test-key")
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := New(yt, t.TempDir()).Handler()
+	return New(yt, t.TempDir()).Handler()
+}
+
+func requestRecords(t *testing.T, buf *bytes.Buffer) []map[string]any {
+	t.Helper()
+	var got []map[string]any
+	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+		var rec map[string]any
+		if err := json.Unmarshal([]byte(line), &rec); err != nil {
+			t.Fatalf("log line %q is not JSON: %v", line, err)
+		}
+		if rec["msg"] == "request" {
+			got = append(got, rec)
+		}
+	}
+	return got
+}
+
+func TestHandlerLogsEachRequest(t *testing.T) {
+	buf := captureLogs(t)
+	h := newTestHandler(t)
 
 	canceled, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -35,16 +60,7 @@ func TestHandlerLogsEachRequest(t *testing.T) {
 	invalid.Header.Set("X-Forwarded-For", "203.0.113.8")
 	h.ServeHTTP(httptest.NewRecorder(), invalid)
 
-	var got []map[string]any
-	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
-		var rec map[string]any
-		if err := json.Unmarshal([]byte(line), &rec); err != nil {
-			t.Fatalf("log line %q is not JSON: %v", line, err)
-		}
-		if rec["msg"] == "request" {
-			got = append(got, rec)
-		}
-	}
+	got := requestRecords(t, buf)
 	if len(got) != 2 {
 		t.Fatalf("got %d request log records, want 2; output:\n%s", len(got), buf.String())
 	}
@@ -65,5 +81,20 @@ func TestHandlerLogsEachRequest(t *testing.T) {
 	}
 	if _, ok := got[1]["playlist_id"]; ok {
 		t.Errorf("record 1: playlist_id = %v, want absent for unparsed input", got[1]["playlist_id"])
+	}
+}
+
+func TestHandlerLogTruncatesLongPath(t *testing.T) {
+	buf := captureLogs(t)
+	h := newTestHandler(t)
+
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/"+strings.Repeat("a", 5000), nil))
+
+	got := requestRecords(t, buf)
+	if len(got) != 1 {
+		t.Fatalf("got %d request log records, want 1", len(got))
+	}
+	if want := "/" + strings.Repeat("a", 255); got[0]["path"] != want {
+		t.Errorf("path has %d bytes, want the first 256", len(got[0]["path"].(string)))
 	}
 }
