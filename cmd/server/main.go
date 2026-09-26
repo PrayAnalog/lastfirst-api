@@ -14,7 +14,7 @@ import (
 	"ytreverse/internal/youtube"
 )
 
-const shutdownTimeout = 5 * time.Second
+const shutdownTimeout = 20 * time.Second
 
 func main() {
 	ctx := context.Background()

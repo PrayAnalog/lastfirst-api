@@ -1,6 +1,6 @@
 lastfirst.app {
 	reverse_proxy app:8080 {
-		lb_try_duration 10s
+		lb_try_duration 30s
 		lb_try_interval 250ms
 	}
 }
