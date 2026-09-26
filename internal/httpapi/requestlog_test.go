@@ -84,17 +84,33 @@ func TestHandlerLogsEachRequest(t *testing.T) {
 	}
 }
 
-func TestHandlerLogTruncatesLongPath(t *testing.T) {
+func TestHandlerLogTruncatesLongFields(t *testing.T) {
 	buf := captureLogs(t)
 	h := newTestHandler(t)
 
-	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/"+strings.Repeat("a", 5000), nil))
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(strings.Repeat("M", 5000), "/"+strings.Repeat("a", 5000), nil))
+
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(canceled, "POST", "/api/playlists", strings.NewReader(`{"input":"PL`+strings.Repeat("b", 5000)+`"}`)))
 
 	got := requestRecords(t, buf)
-	if len(got) != 1 {
-		t.Fatalf("got %d request log records, want 1", len(got))
+	if len(got) != 2 {
+		t.Fatalf("got %d request log records, want 2", len(got))
 	}
-	if want := "/" + strings.Repeat("a", 255); got[0]["path"] != want {
-		t.Errorf("path has %d bytes, want the first 256", len(got[0]["path"].(string)))
+	want := []struct {
+		rec   int
+		field string
+		value string
+	}{
+		{0, "method", strings.Repeat("M", 256)},
+		{0, "path", "/" + strings.Repeat("a", 255)},
+		{1, "playlist_id", "PL" + strings.Repeat("b", 254)},
+	}
+	for _, w := range want {
+		v, _ := got[w.rec][w.field].(string)
+		if v != w.value {
+			t.Errorf("record %d: %s has %d bytes, want the first 256", w.rec, w.field, len(v))
+		}
 	}
 }

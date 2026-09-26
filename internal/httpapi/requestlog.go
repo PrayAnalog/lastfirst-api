@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const maxLoggedPath = 256
+const maxLoggedField = 256
 
 type requestLogKey struct{}
 
@@ -57,19 +57,15 @@ func logRequests(next http.Handler) http.Handler {
 		if status == 0 {
 			status = http.StatusOK
 		}
-		path := r.URL.Path
-		if len(path) > maxLoggedPath {
-			path = path[:maxLoggedPath]
-		}
 		attrs := []any{
-			"method", r.Method,
-			"path", path,
+			"method", clip(r.Method),
+			"path", clip(r.URL.Path),
 			"status", status,
 			"duration_ms", float64(time.Since(start).Microseconds()) / 1000,
 			"ip", clientIP(r),
 		}
 		if rec.playlistID != "" {
-			attrs = append(attrs, "playlist_id", rec.playlistID)
+			attrs = append(attrs, "playlist_id", clip(rec.playlistID))
 		}
 		slog.Info("request", attrs...)
 	})
@@ -79,4 +75,11 @@ func setPlaylistID(r *http.Request, id string) {
 	if rec, ok := r.Context().Value(requestLogKey{}).(*requestLog); ok {
 		rec.playlistID = id
 	}
+}
+
+func clip(s string) string {
+	if len(s) > maxLoggedField {
+		return s[:maxLoggedField]
+	}
+	return s
 }
