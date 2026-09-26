@@ -1,0 +1,40 @@
+name: Deploy
+on:
+  push:
+    tags: ['v*']
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      TAG: ${{ github.ref_name }}
+      IMAGE: ghcr.io/prayanalog/lastfirst:${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: backend
+          persist-credentials: false
+      - uses: actions/checkout@v7
+        with:
+          repository: PrayAnalog/lastfirst-web
+          ref: main
+          token: ${{ secrets.WEB_REPO_TOKEN }}
+          path: frontend
+          persist-credentials: false
+      - env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+      - run: docker build -f backend/Dockerfile -t "$IMAGE" . && docker push "$IMAGE"
+      - env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          install -m 600 /dev/null ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key "root@$HOST" "cd /opt/lastfirst && sed -i 's#\(prayanalog/lastfirst:\).*#\1$TAG#' docker-compose.yml && docker compose config --images app | grep -Fqx '$IMAGE' && docker compose pull app && docker compose up -d app"

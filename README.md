@@ -87,3 +87,22 @@ DEPLOY_HOST=<droplet-ip> deploy/deploy.sh <tag>
 
 This pulls and recreates only the `app` service, after checking that the
 droplet's compose file now names that image; Caddy is left running.
+
+Pushing a `v*` tag runs the same build and rollout in
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), with the tag
+as the image tag and the `main` branch of `PrayAnalog/lastfirst-web` as the
+frontend:
+
+```bash
+git tag <tag> && git push origin <tag>
+```
+
+The workflow needs these repository secrets:
+
+- `WEB_REPO_TOKEN`: a token with read access to `PrayAnalog/lastfirst-web`
+- `DEPLOY_HOST`: the droplet IP
+- `DEPLOY_SSH_KEY`: a private key authorized for `root` on the droplet
+- `DEPLOY_KNOWN_HOSTS`: the droplet's host keys (`ssh-keyscan <droplet-ip>`)
+
+The `lastfirst` package on GHCR must grant this repository write access
+under *Manage Actions access*.
