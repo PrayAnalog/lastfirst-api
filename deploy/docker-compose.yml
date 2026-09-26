@@ -22,6 +22,7 @@ services:
     command:
       - -storageDataPath=/vlogs
       - -retentionPeriod=90d
+      - -retention.maxDiskUsagePercent=80
     ports:
       - "127.0.0.1:9428:9428"
     volumes:
