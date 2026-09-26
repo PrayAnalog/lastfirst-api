@@ -37,4 +37,4 @@ jobs:
           install -m 600 /dev/null ~/.ssh/deploy_key
           printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-          ssh -i ~/.ssh/deploy_key "root@$HOST" "cd /opt/lastfirst && sed -i 's#\(prayanalog/lastfirst:\).*#\1$TAG#' docker-compose.yml && docker compose config --images app | grep -Fqx '$IMAGE' && docker compose pull app && docker compose up -d app"
+          ssh -i ~/.ssh/deploy_key "deploy@$HOST" "$TAG"

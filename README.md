@@ -88,21 +88,42 @@ DEPLOY_HOST=<droplet-ip> deploy/deploy.sh <tag>
 This pulls and recreates only the `app` service, after checking that the
 droplet's compose file now names that image; Caddy is left running.
 
-Pushing a `v*` tag runs the same build and rollout in
-[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), with the tag
-as the image tag and the `main` branch of `PrayAnalog/lastfirst-web` as the
-frontend:
+Pushing a `v*` tag runs
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), which builds
+and pushes the same image, with the tag as the image tag and the `main`
+branch of `PrayAnalog/lastfirst-web` as the frontend, then connects to the
+droplet as `deploy` and sends only the tag:
 
 ```bash
 git tag <tag> && git push origin <tag>
+```
+
+On the droplet, the `deploy` user's `authorized_keys` entry for the workflow
+key is restricted to one command, which receives the tag and performs the
+rollout as root through a sudo rule for that script only:
+
+```
+restrict,command="sudo /usr/local/bin/lastfirst-deploy \"$SSH_ORIGINAL_COMMAND\"" ssh-ed25519 AAAA... github-actions-deploy
 ```
 
 The workflow needs these repository secrets:
 
 - `WEB_REPO_TOKEN`: a token with read access to `PrayAnalog/lastfirst-web`
 - `DEPLOY_HOST`: the droplet IP
-- `DEPLOY_SSH_KEY`: a private key authorized for `root` on the droplet
-- `DEPLOY_KNOWN_HOSTS`: the droplet's host keys (`ssh-keyscan <droplet-ip>`)
+- `DEPLOY_SSH_KEY`: the private key of that `authorized_keys` entry
+- `DEPLOY_KNOWN_HOSTS`: the droplet's host keys
+
+`ssh-keyscan` does not verify the keys it collects. Compare its fingerprint
+with the one read on the droplet itself, for example from the DigitalOcean
+console, before storing it:
+
+```bash
+ssh-keyscan -t ed25519 <droplet-ip> | ssh-keygen -lf -
+```
+
+```bash
+ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+```
 
 The `lastfirst` package on GHCR must grant this repository write access
 under *Manage Actions access*.
