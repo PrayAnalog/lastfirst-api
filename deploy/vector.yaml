@@ -1,0 +1,28 @@
+sources:
+  docker:
+    type: docker_logs
+transforms:
+  parse_json:
+    type: remap
+    inputs: [docker]
+    source: |
+      parsed, err = parse_json(.message)
+      if err == null && is_object(parsed) {
+        del(.message)
+        . = merge(., object!(parsed))
+      }
+sinks:
+  victorialogs:
+    type: elasticsearch
+    inputs: [parse_json]
+    endpoints: [http://victorialogs:9428/insert/elasticsearch/]
+    mode: bulk
+    api_version: v8
+    compression: gzip
+    healthcheck:
+      enabled: false
+    request:
+      headers:
+        VL-Stream-Fields: label.com.docker.compose.service
+        VL-Time-Field: timestamp
+        VL-Msg-Field: msg,message

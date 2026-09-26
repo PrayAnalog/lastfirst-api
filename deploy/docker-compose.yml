@@ -7,6 +7,8 @@ services:
       YT_API_KEY: ${YT_API_KEY:?YT_API_KEY is required}
     expose:
       - "8080"
+    logging:
+      driver: local
   caddy:
     image: caddy:2
     restart: unless-stopped
@@ -16,5 +18,31 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
+    logging:
+      driver: local
+  victorialogs:
+    image: victoriametrics/victoria-logs:v1.52.0
+    restart: unless-stopped
+    command:
+      - -storageDataPath=/vlogs
+      - -retentionPeriod=90d
+    ports:
+      - "127.0.0.1:9428:9428"
+    volumes:
+      - vlogs_data:/vlogs
+    logging:
+      driver: local
+  vector:
+    image: timberio/vector:0.58.0-distroless-libc
+    restart: unless-stopped
+    user: root
+    depends_on:
+      - victorialogs
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./vector.yaml:/etc/vector/vector.yaml:ro
+    logging:
+      driver: local
 volumes:
   caddy_data:
+  vlogs_data:
