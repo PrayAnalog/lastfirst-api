@@ -74,6 +74,9 @@ between independently triggered events, not only the intended success path.
 
 ## Review guidelines
 
+- Write all code-review findings, summaries, and other reviewer-facing prose in
+  Korean. Keep code identifiers, file paths, commands, and quoted source text
+  in their original form.
 - Production boundaries and the race tracing under **Ownership** apply to the
   service code, `Dockerfile` and `deploy/`. They are not the bar for
   `.github/` workflows or other development tooling.
