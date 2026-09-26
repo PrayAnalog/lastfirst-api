@@ -53,8 +53,8 @@ droplet keeps copies of [`deploy/docker-compose.yml`](deploy/docker-compose.yml)
 and [`deploy/Caddyfile`](deploy/Caddyfile) in `/opt/lastfirst`, next to an
 `.env` that provides `YT_API_KEY`.
 
-`deploy/deploy.sh` does not copy those two files; it only rewrites the app
-image tag in the droplet's `docker-compose.yml`. Before deploying, compare them
+A tag deploy does not copy those two files; it only rewrites the app image
+tag in the droplet's `docker-compose.yml`. Before deploying, compare them
 with the droplet's copies (the app image tag line is expected to differ):
 
 ```bash
@@ -78,21 +78,11 @@ If `docker-compose.yml` differs, apply the change to the droplet's copy by
 hand, keeping its current app image tag, and run
 `docker compose up -d` in `/opt/lastfirst`.
 
-To build, push `ghcr.io/prayanalog/lastfirst:<tag>`, and roll it out on the
-droplet (run from the `backend/` checkout):
-
-```bash
-DEPLOY_HOST=<droplet-ip> deploy/deploy.sh <tag>
-```
-
-This pulls and recreates only the `app` service, after checking that the
-droplet's compose file now names that image; Caddy is left running.
-
 Pushing a `v*` tag runs
 [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), which builds
-and pushes the same image, with the tag as the image tag and the `main`
-branch of `PrayAnalog/lastfirst-web` as the frontend, then connects to the
-droplet as `deploy` and sends only the tag:
+and pushes `ghcr.io/prayanalog/lastfirst:<tag>`, with the `main` branch of
+`PrayAnalog/lastfirst-web` as the frontend, then connects to the droplet as
+`deploy` and sends only the tag:
 
 ```bash
 git tag <tag> && git push origin <tag>
