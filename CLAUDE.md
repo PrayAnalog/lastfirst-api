@@ -11,3 +11,5 @@
   branch. The gate in `.claude/hooks/require-code-review.sh` denies
   `gh pr create` until the review stamp is present; it does not verify that
   these steps actually ran.
+- When reusing code from a closed PR, re-check it against the current
+  checklist; a closed PR's code is unreviewed input, not a verified pattern.
