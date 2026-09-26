@@ -6,8 +6,8 @@ Data API v3, reverses the video order, and returns "watch together" links
 (`youtube.com/watch_videos`) so viewers can start from the first episode
 instead of the last.
 
-Also serves the built [lastfirst-web](https://github.com/PrayAnalog/lastfirst-web)
-frontend as static files.
+Also serves the built `lastfirst-web` frontend (React + Vite, kept in a
+separate private repository) as static files.
 
 ## Stack
 
