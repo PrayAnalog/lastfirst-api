@@ -138,7 +138,7 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		TotalCount:    len(items),
 		IncludedCount: len(ids),
 		ExcludedCount: len(items) - len(ids),
-		WatchLinks:    watchLinks(ids),
+		WatchLinks:    watchLinks(reverseTitle, ids),
 	})
 }
 
@@ -160,13 +160,13 @@ func clientIP(r *http.Request) string {
 	return host
 }
 
-func watchLinks(ids []string) []watchLink {
+func watchLinks(reverseTitle string, ids []string) []watchLink {
 	links := []watchLink{}
 	total := (len(ids) + watchChunk - 1) / watchChunk
 	for start := 0; start < len(ids); start += watchChunk {
 		end := min(start+watchChunk, len(ids))
 		links = append(links, watchLink{
-			Label:        fmt.Sprintf("%d–%d", start+1, end),
+			Label:        fmt.Sprintf("%s %d–%d", reverseTitle, start+1, end),
 			URL:          "https://www.youtube.com/watch_videos?video_ids=" + strings.Join(ids[start:end], ","),
 			ThumbnailURL: thumbnailURL(ids[start]),
 			Index:        start/watchChunk + 1,
