@@ -41,8 +41,7 @@ origin/main`; never `git checkout main`.
 - `go doc` for each library call the change depends on. Write from the doc,
   not from memory.
 - `.coderabbit.yaml` `path_instructions` and `AGENTS.md` **Production
-  boundaries** for the paths involved, and **Test changes** in
-  `.agents/code-review.md` when the change adds, changes or removes a test.
+  boundaries** for the paths involved, and all of `.agents/code-review.md`.
   They are the rules the bots review against, so they are authoring rules
   here.
 - When the change edits a process document (skill, checklist, `AGENTS.md`,
