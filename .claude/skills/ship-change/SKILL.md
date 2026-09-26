@@ -85,8 +85,9 @@ Attaching needs GitHub CLI 2.99 or later; check `gh --version`.
 Write the body to a file named for this PR's branch in the session scratchpad,
 not to a shared path such as `.pr-lens/body.md`, which other sessions in the
 worktree overwrite. Write it in its own step, never in the command that runs
-`gh pr create`: the gate denies that whole command, so a file written inside it
-is never written and the retry sends whatever the path held before.
+`gh pr create`: when the gate denies a command, none of it runs, so a file
+written inside it is never written and the retry sends whatever the path held
+before.
 
 ```bash
 git push -u origin HEAD
