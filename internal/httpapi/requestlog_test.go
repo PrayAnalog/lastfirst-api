@@ -114,3 +114,18 @@ func TestHandlerLogTruncatesLongFields(t *testing.T) {
 		}
 	}
 }
+
+func TestHandlerLogClipsOnRuneBoundary(t *testing.T) {
+	buf := captureLogs(t)
+	h := newTestHandler(t)
+
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/"+strings.Repeat("a", 254)+"%EA%B0%80", nil))
+
+	got := requestRecords(t, buf)
+	if len(got) != 1 {
+		t.Fatalf("got %d request log records, want 1", len(got))
+	}
+	if want := "/" + strings.Repeat("a", 254); got[0]["path"] != want {
+		t.Errorf("path = %q, want %q", got[0]["path"], want)
+	}
+}

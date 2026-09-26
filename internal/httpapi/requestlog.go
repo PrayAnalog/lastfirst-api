@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+	"unicode/utf8"
 )
 
 const maxLoggedField = 256
@@ -78,8 +79,12 @@ func setPlaylistID(r *http.Request, id string) {
 }
 
 func clip(s string) string {
-	if len(s) > maxLoggedField {
-		return s[:maxLoggedField]
+	if len(s) <= maxLoggedField {
+		return s
 	}
-	return s
+	n := maxLoggedField
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
+	}
+	return s[:n]
 }
