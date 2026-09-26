@@ -68,6 +68,10 @@ shutdown. For any other change, run `git diff --check`.
 1. Commit. Every review below covers `git diff <base>...HEAD`.
 2. Work through `.agents/pre-pr-checklist.md`, then run `/code-review` and the
    OCR review in `.agents/ocr-review.md`. Fix what they find, or note why not.
+   For lifecycle and error-path changes, list each branch the diff adds or
+   keeps that ends the process, and state what is still running when it
+   fires. A branch dismissed as "startup only" or "same as base" needs the
+   evidence that nothing is in flight at that point.
    If any fix changes the diff, take it back through section 3 (Implement and
    verify), then through this section again.
 3. Record the review with `.claude/skills/ship-change/record-review.sh <base>`,
