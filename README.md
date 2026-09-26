@@ -69,4 +69,6 @@ pushing an existing tag overwrites the image it names.
 
 A tag deploy only changes the app image tag. Changes to
 `deploy/docker-compose.yml` or `deploy/Caddyfile` are applied to the
-droplet's copies by hand.
+droplet's copies by hand, before pushing the tag that depends on them:
+Compose stops a container with the `stop_grace_period` it was created
+with, so a new grace period only covers containers created after the edit.

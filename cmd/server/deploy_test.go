@@ -37,14 +37,14 @@ func deployDuration(t *testing.T, path, section string, re *regexp.Regexp, unset
 }
 
 func TestStopGracePeriodOutlastsShutdown(t *testing.T) {
-	grace := deployDuration(t, "../../deploy/docker-compose.yml", "\n  app:", regexp.MustCompile(`stop_grace_period:\s*(\S+)`), 10*time.Second)
+	grace := deployDuration(t, "../../deploy/docker-compose.yml", "\n  app:", regexp.MustCompile(`(?m)^\s*stop_grace_period:\s*(\S+)`), 10*time.Second)
 	if want := shutdownTimeout + 5*time.Second; grace < want {
 		t.Fatalf("app stop_grace_period = %s, want at least shutdownTimeout + 5s = %s", grace, want)
 	}
 }
 
 func TestCaddyRetryCoversDrainAndRestart(t *testing.T) {
-	try := deployDuration(t, "../../deploy/Caddyfile", "", regexp.MustCompile(`lb_try_duration\s+(\S+)`), 0)
+	try := deployDuration(t, "../../deploy/Caddyfile", "", regexp.MustCompile(`(?m)^\s*lb_try_duration\s+(\S+)`), 0)
 	if want := shutdownTimeout + 10*time.Second; try < want {
 		t.Fatalf("lb_try_duration = %s, want at least shutdownTimeout + 10s = %s", try, want)
 	}
