@@ -109,6 +109,13 @@ rollout as root through a sudo rule for that script only:
 restrict,command="sudo /usr/local/bin/lastfirst-deploy \"$SSH_ORIGINAL_COMMAND\"" ssh-ed25519 AAAA... github-actions-deploy
 ```
 
+The forced command has no terminal to type a password into, so the sudo
+rule in `/etc/sudoers.d/lastfirst-deploy` must be passwordless:
+
+```
+deploy ALL=(root) NOPASSWD: /usr/local/bin/lastfirst-deploy
+```
+
 The workflow needs these repository secrets:
 
 - `WEB_REPO_TOKEN`: a token with read access to `PrayAnalog/lastfirst-web`
