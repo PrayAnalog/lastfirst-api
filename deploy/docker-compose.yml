@@ -29,17 +29,33 @@ services:
       - vlogs_data:/vlogs
     logging:
       driver: local
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-api
+    logging:
+      driver: local
   vector:
     image: timberio/vector:0.58.0-distroless-libc
     restart: unless-stopped
-    user: root
     depends_on:
       - victorialogs
+      - docker-proxy
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./vector.yaml:/etc/vector/vector.yaml:ro
+    networks:
+      - default
+      - docker-api
     logging:
       driver: local
+networks:
+  docker-api:
+    internal: true
 volumes:
   caddy_data:
   vlogs_data:
