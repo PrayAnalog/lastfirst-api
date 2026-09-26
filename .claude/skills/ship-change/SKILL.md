@@ -70,8 +70,11 @@ shutdown. For any other change, run `git diff --check`.
    OCR review in `.agents/ocr-review.md`. Fix what they find, or note why not.
    If any fix changes the diff, take it back through section 3 (Implement and
    verify), then through this section again.
-3. Record the review with the `touch` command the gate in
-   `.claude/hooks/require-code-review.sh` prints when it denies `gh pr create`.
+3. Record the review with `.claude/skills/ship-change/record-review.sh <base>`,
+   run as a command of its own, where `<base>` is the `--base` the PR will be
+   opened with. It writes the stamp the gate in
+   `.claude/hooks/require-code-review.sh` checks, so `gh pr create` then runs
+   on the first try.
 
 ## 5. Open the PR
 
