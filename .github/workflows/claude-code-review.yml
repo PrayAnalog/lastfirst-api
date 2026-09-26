@@ -4,6 +4,7 @@ on:
     types: [opened, synchronize, ready_for_review, reopened]
 jobs:
   review:
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -13,7 +14,6 @@ jobs:
       id-token: write
     steps:
       - id: author
-        if: github.event.pull_request.head.repo.full_name == github.repository
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
