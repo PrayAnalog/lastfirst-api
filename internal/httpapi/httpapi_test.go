@@ -31,13 +31,13 @@ func TestClientIP(t *testing.T) {
 	}
 }
 
-func TestWatchLinksLabelIsRangeOnly(t *testing.T) {
+func TestWatchLinksLabelIncludesReverseTitle(t *testing.T) {
 	ids := make([]string, watchChunk+3)
 	for i := range ids {
 		ids[i] = "v" + strconv.Itoa(i)
 	}
-	links := watchLinks(ids)
-	want := []string{"1–50", "51–53"}
+	links := watchLinks("[Reversed] My list", ids)
+	want := []string{"[Reversed] My list 1–50", "[Reversed] My list 51–53"}
 	if len(links) != len(want) {
 		t.Fatalf("len(watchLinks) = %d, want %d", len(links), len(want))
 	}
