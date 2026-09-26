@@ -1,17 +1,17 @@
 sources:
-  docker:
-    type: docker_logs
-    docker_host: http://docker-proxy:2375
+  fluent:
+    type: fluent
+    address: 0.0.0.0:24224
 transforms:
   parse_json:
     type: remap
-    inputs: [docker]
+    inputs: [fluent]
     source: |
-      parsed, err = parse_json(.message)
+      parsed, err = parse_json(.log)
       if err == null && is_object(parsed) {
         fields = object!(parsed)
         if exists(fields.msg) {
-          del(.message)
+          del(.log)
         }
         . = merge(., fields)
       }
@@ -27,6 +27,6 @@ sinks:
       enabled: false
     request:
       headers:
-        VL-Stream-Fields: label.com.docker.compose.service
+        VL-Stream-Fields: tag
         VL-Time-Field: timestamp
-        VL-Msg-Field: msg,message
+        VL-Msg-Field: msg,log

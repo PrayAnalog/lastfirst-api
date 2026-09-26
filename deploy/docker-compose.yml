@@ -7,6 +7,13 @@ services:
       YT_API_KEY: ${YT_API_KEY:?YT_API_KEY is required}
     expose:
       - "8080"
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 127.0.0.1:24224
+        fluentd-async: "true"
+        fluentd-sub-second-precision: "true"
+        tag: app
   caddy:
     image: caddy:2
     restart: unless-stopped
@@ -16,6 +23,13 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 127.0.0.1:24224
+        fluentd-async: "true"
+        fluentd-sub-second-precision: "true"
+        tag: caddy
   victorialogs:
     image: victoriametrics/victoria-logs:v1.52.0
     restart: unless-stopped
@@ -29,33 +43,17 @@ services:
       - vlogs_data:/vlogs
     logging:
       driver: local
-  docker-proxy:
-    image: tecnativa/docker-socket-proxy:v0.5.0
-    restart: unless-stopped
-    environment:
-      CONTAINERS: 1
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - docker-api
-    logging:
-      driver: local
   vector:
     image: timberio/vector:0.58.0-distroless-libc
     restart: unless-stopped
     depends_on:
       - victorialogs
-      - docker-proxy
+    ports:
+      - "127.0.0.1:24224:24224"
     volumes:
       - ./vector.yaml:/etc/vector/vector.yaml:ro
-    networks:
-      - default
-      - docker-api
     logging:
       driver: local
-networks:
-  docker-api:
-    internal: true
 volumes:
   caddy_data:
   vlogs_data:
