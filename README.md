@@ -68,7 +68,11 @@ Use a tag that does not already exist in GHCR:
 pushing an existing tag overwrites the image it names.
 
 A tag deploy only changes the app image tag. Changes to
-`deploy/docker-compose.yml` or `deploy/Caddyfile` are applied to the
-droplet's copies by hand, before pushing the tag that depends on them:
+`deploy/docker-compose.yml`, `deploy/Caddyfile` or `deploy/vector.yaml` are
+applied to the droplet's copies by hand, before pushing the tag that depends
+on them:
 Compose stops a container with the `stop_grace_period` it was created
 with, so a new grace period only covers containers created after the edit.
+A tag deploy recreates only the app container, so a service added to the
+compose file starts once it is brought up by hand with
+`docker compose up -d <service>`.

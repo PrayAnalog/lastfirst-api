@@ -8,8 +8,11 @@ transforms:
     source: |
       parsed, err = parse_json(.message)
       if err == null && is_object(parsed) {
-        del(.message)
-        . = merge(., object!(parsed))
+        fields = object!(parsed)
+        if exists(fields.msg) {
+          del(.message)
+        }
+        . = merge(., fields)
       }
 sinks:
   victorialogs:
