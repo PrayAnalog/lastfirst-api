@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -17,6 +19,8 @@ import (
 const shutdownTimeout = 20 * time.Second
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	slog.SetLogLoggerLevel(slog.LevelError)
 	ctx := context.Background()
 	cfg := config.Load()
 
