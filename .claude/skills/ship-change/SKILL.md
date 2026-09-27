@@ -147,7 +147,10 @@ until .claude/skills/ship-change/review-state.sh <pr> | grep -Eq '^verdict: (fin
 .claude/skills/ship-change/review-state.sh <pr>
 ```
 
-Run the loop in the background (Monitor) and move on to another PR meanwhile.
+Run the loop in the background (Monitor), and do not start another change in
+the meantime: take the next change from the section 1 list only after this
+PR is reported done, or after the user stops its rounds at one of the
+questions below.
 On `verdict: blocked`, post the comment the script names for the blocked bot,
 then ask the user whether to wait for it or finish without it.
 
