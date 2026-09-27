@@ -44,21 +44,27 @@ strip() { sed -E 's/(!\[[^]]*\])\([^)]*\)/\1()/g'; }
 
 # CodeRabbit appends its summary to the body, so the file only has to be a
 # prefix. gh appends an attachment the body does not reference, which shows
-# up as one image more than the file has.
+# up as one image more than the file has, and leaves a reference whose upload
+# failed pointing at the local path.
 want=$(strip <"$body_file")
 have=$(strip <<<"$stored")
-count() { { grep -oE "$1" || true; } | wc -l | tr -d ' '; }
-wanted=$(count "$images" <"$body_file")
-total=$(count "$images" <<<"$stored")
-uploaded=$(count '!\[[^]]*\]\(https://github\.com/user-attachments/[^)]*\)' <<<"$stored")
+count() { { grep -oE "$images" || true; } | wc -l | tr -d ' '; }
+wanted=$(count <"$body_file")
+total=$(count <<<"$stored")
 
 echo "$url"
 if [ "${have#"$want"}" = "$have" ]; then
   echo "open-pr: the stored body is not $body_file" >&2
   exit 1
 fi
-if [ "$total" != "$wanted" ] || [ "$uploaded" != "$wanted" ]; then
-  echo "open-pr: $body_file references $wanted diagrams, the stored body has $total images of which $uploaded are uploaded assets" >&2
+if [ "$total" != "$wanted" ]; then
+  echo "open-pr: $body_file has $wanted images, the stored body has $total" >&2
   exit 1
 fi
-echo "body: $body_file, $uploaded diagrams uploaded"
+for f in "$@"; do
+  if grep -qF "](${f%%#*})" <<<"$stored"; then
+    echo "open-pr: ${f%%#*} was not uploaded" >&2
+    exit 1
+  fi
+done
+echo "body: $body_file, $# diagrams uploaded"
