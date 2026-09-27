@@ -189,14 +189,24 @@ the script prints `verdict: quiet`, or when the user decides to stop at one of
 the questions above. `verdict: unapproved` means every
 thread is answered but CodeRabbit has not approved; read its latest review
 body, its summary comment and every thread marked `bot-replied` before
-deciding whether anything is still open.
+deciding whether anything is still open. `review-bodies.sh <pr>` prints all
+three in one call:
+
+```bash
+.claude/skills/ship-change/review-bodies.sh <pr>
+```
+
+It prints every CodeRabbit review body with its `<details>` blocks kept, the
+summary comment, and every review thread with all of its comments, marking
+the ones already resolved.
 
 `quiet` counts replies, not resolutions. Before reporting a PR as done, re-read
 each finding against the code its reply points to and check that its failure
 scenario is gone, or that the reply gives repository evidence for declining it.
 The script finds outside-diff findings by their "Outside diff range comments"
 and "Outside the diff" headings, and CodeRabbit may word them otherwise,
-so read every CodeRabbit review body on the PR yourself. A bot that paused,
+so read every CodeRabbit review body on the PR yourself, from the same
+`review-bodies.sh` output as the threads. A bot that paused,
 skipped the PR or ran out of usage without reviewing the current head has not
 reviewed it: report it to the user as not run, never as clean.
 
