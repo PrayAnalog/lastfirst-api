@@ -8,7 +8,12 @@ services:
     expose:
       - "8080"
     logging:
-      driver: local
+      driver: fluentd
+      options:
+        fluentd-address: 127.0.0.1:24224
+        fluentd-async: "true"
+        fluentd-sub-second-precision: "true"
+        tag: app
   caddy:
     image: caddy:2
     restart: unless-stopped
@@ -19,6 +24,36 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
     logging:
+      driver: fluentd
+      options:
+        fluentd-address: 127.0.0.1:24224
+        fluentd-async: "true"
+        fluentd-sub-second-precision: "true"
+        tag: caddy
+  victorialogs:
+    image: victoriametrics/victoria-logs:v1.52.0
+    restart: unless-stopped
+    command:
+      - -storageDataPath=/vlogs
+      - -retentionPeriod=90d
+      - -retention.maxDiskUsagePercent=80
+    ports:
+      - "127.0.0.1:9428:9428"
+    volumes:
+      - vlogs_data:/vlogs
+    logging:
+      driver: local
+  vector:
+    image: timberio/vector:0.58.0-distroless-libc
+    restart: unless-stopped
+    depends_on:
+      - victorialogs
+    ports:
+      - "127.0.0.1:24224:24224"
+    volumes:
+      - ./vector.yaml:/etc/vector/vector.yaml:ro
+    logging:
       driver: local
 volumes:
   caddy_data:
+  vlogs_data:

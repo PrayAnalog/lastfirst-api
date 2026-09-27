@@ -1,0 +1,32 @@
+sources:
+  fluent:
+    type: fluent
+    address: 0.0.0.0:24224
+transforms:
+  parse_json:
+    type: remap
+    inputs: [fluent]
+    source: |
+      parsed, err = parse_json(.log)
+      if err == null && is_object(parsed) {
+        fields = object!(parsed)
+        if exists(fields.msg) {
+          del(.log)
+        }
+        . = merge(fields, .)
+      }
+sinks:
+  victorialogs:
+    type: elasticsearch
+    inputs: [parse_json]
+    endpoints: [http://victorialogs:9428/insert/elasticsearch/]
+    mode: bulk
+    api_version: v8
+    compression: gzip
+    healthcheck:
+      enabled: false
+    request:
+      headers:
+        VL-Stream-Fields: tag
+        VL-Time-Field: timestamp
+        VL-Msg-Field: msg,log
