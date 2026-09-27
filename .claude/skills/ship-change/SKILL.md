@@ -138,14 +138,14 @@ not `main`; comment `@coderabbitai review` on those.
 Wait for both bots on the current head, without polling by hand:
 
 ```bash
-until .claude/skills/ship-change/review-state.sh <pr> | grep -Eq '^verdict: (findings|blocked|unapproved|quiet)'; do sleep 60; done
-.claude/skills/ship-change/review-state.sh <pr>
+.claude/skills/ship-change/wait-review.sh <pr>
 ```
 
-Run the loop in the background (Monitor), and do not start another change in
-the meantime: take the next change from the section 1 list only after this
-PR is reported done, or after the user stops its rounds at one of the
-questions below.
+It runs `review-state.sh <pr>` every 60 seconds and exits with its last
+report once the verdict is anything but `waiting`. Run it in the background
+(Monitor), and do not start another change in the meantime: take the next
+change from the section 1 list only after this PR is reported done, or after
+the user stops its rounds at one of the questions below.
 On `verdict: blocked`, post the comment the script names for the blocked bot,
 then ask the user whether to wait for it or finish without it.
 
