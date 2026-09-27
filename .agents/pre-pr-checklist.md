@@ -130,7 +130,20 @@ PR body instead.
 Check every test the diff adds, changes or removes against **Test changes** in
 `.agents/code-review.md`; Codex reviews tests against it.
 
-## 10. Answer each review round in the thread
+## 10. Bound what a log keeps and who can read it
+
+Output that grows with traffic — a per-request log line, an access log — is
+retained state. Every hop that stores it needs a size bound in the same PR:
+the container's logging driver (Docker's default `json-file` never rotates)
+and any store it is shipped to, bounded by disk as well as by age. Cap each
+field a client chooses (method, path, IDs read from the body) before it is
+logged, cutting on a character boundary, so one request cannot set the size
+of a record. A log pipeline gets only the log lines: anything that reads
+them through the Docker API can also inspect containers, and inspect
+returns their environment, `YT_API_KEY` included. #110, #111 and #112 each
+drew a review round for one of these.
+
+## 11. Answer each review round in the thread
 
 Sort the findings as `ship-change` step 6 does: ask before a fix that needs new
 state, permissions or triggers, decline accepted risks with the sequence they
