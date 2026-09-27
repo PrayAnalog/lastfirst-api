@@ -64,6 +64,9 @@ container to that tag:
 git tag <tag> && git push origin <tag>
 ```
 
+Once the deploy succeeds, the workflow publishes a GitHub Release for the tag
+whose notes list the pull requests merged since the previous tag.
+
 Use a tag that does not already exist in GHCR:
 pushing an existing tag overwrites the image it names.
 
