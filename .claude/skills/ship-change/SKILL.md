@@ -74,10 +74,10 @@ shutdown. For any other change, run `git diff --check`.
    If any fix changes the diff, take it back through section 3 (Implement and
    verify), then through this section again.
 3. Record the review with `.claude/skills/ship-change/record-review.sh <base>`,
-   run as a command of its own, where `<base>` is the `--base` the PR will be
-   opened with. It writes the stamp the gate in
-   `.claude/hooks/require-code-review.sh` checks, so `gh pr create` then runs
-   on the first try.
+   run as a command of its own, where `<base>` is the base the PR will be
+   opened against. It writes the stamp that the gate in
+   `.claude/hooks/require-code-review.sh` and `open-pr.sh` both check, so the
+   PR then opens on the first try.
 
 ## 5. Open the PR
 
@@ -90,27 +90,22 @@ Attaching needs GitHub CLI 2.99 or later; check `gh --version`.
 
 Write the body to a file named for this PR's branch in the session scratchpad,
 not to a shared path such as `.pr-lens/body.md`, which other sessions in the
-worktree overwrite. Write it in its own step, never in the command that runs
-`gh pr create`: when the gate denies a command, none of it runs, so a file
-written inside it is never written and the retry sends whatever the path held
-before.
+worktree overwrite. Write it in its own step, not inside the command that
+opens the PR. Then push and open the PR with one command:
 
 ```bash
-git push -u origin HEAD
-gh pr create --base <main-or-parent> --title "…" --body-file <file> \
-  --attach .pr-lens/<view>-light-<hash>.svg
+.claude/skills/ship-change/open-pr.sh <main-or-parent> "…" <file> \
+  .pr-lens/<view>-light-<hash>.svg
 ```
 
-Repeat `--attach` for each diagram the body references. When an upload fails,
-`gh` still creates the PR, prints its URL and exits non-zero; run
-`gh pr edit <pr> --body-file <file>` with the same `--attach` flags rather than
-creating the PR again.
-
-Then read the body back with `gh pr view <pr> --json body` and check that it is
-this PR's text and that each diagram sits under **Diagram** as an uploaded
-asset. `gh` appends an attachment the body does not reference to the end of the
-body, so a diagram at the bottom means the body is not the one written for this
-PR.
+Pass each diagram the body references. The script refuses before pushing
+when `record-review.sh` has not recorded a review against that base. It pushes
+`HEAD`, runs `gh pr create` with an `--attach` for each diagram, and, when an
+upload fails, `gh pr edit` with the same flags instead of creating a second
+PR. It then reads the stored body back and exits non-zero unless the body
+starts with the file's text and each diagram reference points at an uploaded
+asset. `gh` appends an attachment the body does not reference to the end of
+the body, so an extra image also fails the check.
 
 Write the title and body in Korean. The body has these sections, under the
 English headings below:
@@ -147,7 +142,10 @@ until .claude/skills/ship-change/review-state.sh <pr> | grep -Eq '^verdict: (fin
 .claude/skills/ship-change/review-state.sh <pr>
 ```
 
-Run the loop in the background (Monitor) and move on to another PR meanwhile.
+Run the loop in the background (Monitor), and do not start another change in
+the meantime: take the next change from the section 1 list only after this
+PR is reported done, or after the user stops its rounds at one of the
+questions below.
 On `verdict: blocked`, post the comment the script names for the blocked bot,
 then ask the user whether to wait for it or finish without it.
 

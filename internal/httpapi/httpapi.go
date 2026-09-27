@@ -53,7 +53,7 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/playlists", s.createPlaylist)
 	mux.Handle("/", s.spa())
-	return mux
+	return logRequests(mux)
 }
 
 type watchLink struct {
@@ -93,6 +93,7 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	setPlaylistID(r, id)
 
 	meta, err := s.yt.FetchPlaylistMeta(r.Context(), id)
 	switch {
