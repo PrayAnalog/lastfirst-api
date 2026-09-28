@@ -196,8 +196,8 @@ release, the latest tag, the newest record — list every form the source can
 produce, not only the ones in use today: tag names the trigger pattern
 accepts, suffixes such as `-rc.1`, and the default limit or page size of the
 command that lists them (`gh release list` returns 30 unless told
-otherwise). Run the new expression against each form, and against the old
-expression, before pushing. #149 drew three review rounds, one per form it
+otherwise). Run both the new and the old expression against each form before
+pushing. #149 drew three review rounds, one per form it
 had missed.
 
 ## 14. Answer each review round in the thread
