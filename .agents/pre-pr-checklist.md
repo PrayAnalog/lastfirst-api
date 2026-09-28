@@ -189,7 +189,18 @@ with the pull request's base as `<base>` in all three: a local `<base>` can
 still point at the commit before the base moved. The rebases of #127 onto
 #126 and of #132 onto #128 each broke this way.
 
-## 13. Answer each review round in the thread
+## 13. Test a new selection against every input form its source allows
+
+When the diff replaces how items are selected or ordered — the previous
+release, the latest tag, the newest record — list every form the source can
+produce, not only the ones in use today: tag names the trigger pattern
+accepts, suffixes such as `-rc.1`, and the default limit or page size of the
+command that lists them (`gh release list` returns 30 unless told
+otherwise). Run both the new and the old expression against each form before
+pushing. #149 drew three review rounds, one per form it
+had missed.
+
+## 14. Answer each review round in the thread
 
 Sort the findings as `ship-change` step 6 does: ask before a fix that needs new
 state, permissions or triggers, decline accepted risks with the sequence they
