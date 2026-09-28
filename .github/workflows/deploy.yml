@@ -63,7 +63,7 @@ jobs:
           declare -A deployed
           for pr in $prs; do
             body=$(gh api "repos/$GH_REPO/pulls/$pr" --jq '.body // ""')
-            for issue in $(grep -oE 'Refs #[0-9]+' <<<"$body" | grep -oE '[0-9]+' | sort -un); do
+            for issue in $(grep -oE '^Refs #[0-9]+' <<<"$body" | grep -oE '[0-9]+' | sort -un); do
               deployed[$issue]+=" #$pr"
             done
           done
