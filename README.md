@@ -78,7 +78,7 @@ SSH with a key restricted to a single deploy command, which rolls the app
 container to that tag:
 
 ```bash
-git tag <tag> && git push origin <tag>
+git fetch origin main && git tag <tag> origin/main && git push origin <tag>
 ```
 
 Once the deploy succeeds, the workflow publishes a GitHub Release for the tag
