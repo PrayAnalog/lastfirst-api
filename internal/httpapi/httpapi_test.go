@@ -1,8 +1,11 @@
 package httpapi
 
 import (
+	"fmt"
 	"net/http/httptest"
+	"os"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -45,5 +48,16 @@ func TestWatchLinksLabelIncludesReverseTitle(t *testing.T) {
 		if l.Label != want[i] {
 			t.Errorf("links[%d].Label = %q, want %q", i, l.Label, want[i])
 		}
+	}
+}
+
+func TestCaddyBodyLimitMatchesApp(t *testing.T) {
+	caddyfile, err := os.ReadFile("../../deploy/caddy/Caddyfile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf("max_size %dKiB", maxRequestBody>>10)
+	if !strings.Contains(string(caddyfile), want) {
+		t.Errorf("Caddyfile does not contain %q", want)
 	}
 }
