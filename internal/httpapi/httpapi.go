@@ -216,7 +216,7 @@ func thumbnailURL(videoID string) string {
 func (s *Server) spa() http.Handler {
 	files := http.FileServer(http.Dir(s.staticDir))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, err := os.Stat(filepath.Join(s.staticDir, filepath.Clean(r.URL.Path))); err != nil {
+		if _, err := os.Stat(filepath.Join(s.staticDir, filepath.Clean("/"+r.URL.Path))); err != nil {
 			http.ServeFile(w, r, filepath.Join(s.staticDir, "index.html"))
 			return
 		}
