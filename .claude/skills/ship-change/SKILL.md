@@ -188,8 +188,10 @@ these that applies:
 3. **Accepted risk** — the failure needs a theoretical sequence, such as
    concurrent manual actions or limits no real change reaches, and what fails is
    an advisory control that other safeguards still cover, never a production
-   invariant from `AGENTS.md`. Decline it with the sequence it needs and why the
-   risk is accepted, and list it under **Known limitations** in the PR body.
+   invariant from `AGENTS.md`. Before declining, look for a fix confined to the
+   files the diff already touches, and decline only when every fix needs changes
+   outside them. Decline it with the sequence it needs and why the risk is
+   accepted, and list it under **Known limitations** in the PR body.
 4. **Valid** — fix it in a commit whose message names each defect it fixes,
    including uncommon interleavings that break a production invariant. Take
    the new diff through sections 3 and 4 again before pushing.
