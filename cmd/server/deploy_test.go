@@ -55,8 +55,8 @@ func TestVictoriaLogsCacheCapped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	re := regexp.MustCompile(`\n  victorialogs:\n(?:(?:    .*)?\n)*?\s+- -memory\.allowedBytes=[1-9]`)
+	re := regexp.MustCompile(`\n  victorialogs:\n(?:(?:    .*)?\n)*?\s+- -memory\.allowedBytes=128MiB(?:\n|$)`)
 	if !re.Match(b) {
-		t.Fatal("victorialogs has no non-zero -memory.allowedBytes, so its caches may take 60% of the droplet's memory")
+		t.Fatal("victorialogs does not cap -memory.allowedBytes at 128MiB, so its caches may take 60% of the droplet's memory")
 	}
 }
