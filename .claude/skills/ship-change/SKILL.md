@@ -104,7 +104,8 @@ opens the PR. Then push and open the PR with one command:
   .pr-lens/<view>-light-<hash>.svg
 ```
 
-Pass each diagram the body references. The script refuses before pushing
+Pass each diagram the body references, and no path at all when the diagram
+was skipped. The script refuses before pushing
 when `record-review.sh` has not recorded a review against that base. It pushes
 `HEAD`, runs `gh pr create` with an `--attach` for each diagram, and, when an
 upload fails, `gh pr edit` with the same flags instead of creating a second
