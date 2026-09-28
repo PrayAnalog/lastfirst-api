@@ -141,7 +141,7 @@ Check every test the diff adds, changes or removes against **Test changes** in
 
 ## 10. Bound what a log keeps and who can read it
 
-Applies to `cmd/`, `internal/` and `deploy/`.
+Applies to `cmd/`, `internal/`, `Dockerfile` and `deploy/`.
 
 Output that grows with traffic — a per-request log line, an access log — is
 retained state. Every hop that stores it needs a size bound in the same PR:
