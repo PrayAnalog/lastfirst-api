@@ -1,8 +1,9 @@
 # Pre-PR Checklist
 
-Work through this against the branch diff before `gh pr create`, and again
-before every push that answers review feedback. Each item stands for a defect
-that reached review in this repository at least once. A section that names the
+Work through this against the branch diff before `gh pr create`, again
+before every push that answers review feedback, and before pushing a branch
+rebased onto a base that moved. Each item stands for a defect that reached
+review in this repository at least once. A section that names the
 paths it applies to does not apply to a diff that touches none of them; say so
 and move on.
 
@@ -175,7 +176,18 @@ with `commits/<sha>/pulls`, as `merged_prs` in `deploy.yml` does for a tag. Take
 only through `env:`, never through `${{ }}` inside `run:`. #143 and #151
 each drew a review round for this.
 
-## 12. Answer each review round in the thread
+## 12. Re-check callers after rebasing onto a moved base
+
+A pull request merged into the base after this branch was cut can add a new
+caller of a function whose signature this diff changes, or a test that
+builds on the old one, with no conflict in the file that then fails to
+build. Before pushing the rebased branch, search the rebased tree for every
+function whose signature the diff changes, run the section 3 checks of
+`ship-change`, then `/code-review` and the OCR review over the rebased diff,
+and only then run `record-review.sh`. The rebases of #127 onto #126 and of
+#132 onto #128 each broke this way.
+
+## 13. Answer each review round in the thread
 
 Sort the findings as `ship-change` step 6 does: ask before a fix that needs new
 state, permissions or triggers, decline accepted risks with the sequence they
