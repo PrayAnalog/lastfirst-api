@@ -82,3 +82,12 @@ compose file starts once it is brought up by hand with
 driver: Docker fixes it when a container is created, so bring up
 `vector` first, then recreate each service whose `logging` changed, such
 as `caddy`, with `docker compose up -d <service>`.
+Caddy mounts the `caddy/` directory next to the compose file at
+`/etc/caddy`. On a droplet whose Caddyfile still sits next to the compose
+file, move it before applying the new compose file, so the mount does not
+start Caddy without a config, then recreate `caddy`:
+
+```bash
+mkdir caddy && mv Caddyfile caddy/Caddyfile
+docker compose up -d caddy
+```
