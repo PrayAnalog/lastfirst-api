@@ -49,3 +49,14 @@ func TestCaddyRetryCoversDrainAndRestart(t *testing.T) {
 		t.Fatalf("lb_try_duration = %s, want at least shutdownTimeout + 10s = %s", try, want)
 	}
 }
+
+func TestVictoriaLogsCacheCapped(t *testing.T) {
+	b, err := os.ReadFile("../../deploy/docker-compose.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	re := regexp.MustCompile(`\n  victorialogs:\n(?:(?:    .*)?\n)*?\s+- -memory\.allowedBytes=128MiB(?:\n|$)`)
+	if !re.Match(b) {
+		t.Fatal("victorialogs does not cap -memory.allowedBytes at 128MiB, so its caches may take 60% of the droplet's memory")
+	}
+}
