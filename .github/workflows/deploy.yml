@@ -44,9 +44,32 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      issues: write
+      pull-requests: read
     steps:
       - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" --verify-tag --generate-notes
+        shell: bash
+        run: |
+          shopt -s inherit_errexit
+          prev=$(gh release view --json tagName --jq .tagName)
+          gh release create "$TAG" --verify-tag --generate-notes
+          prs=$(gh api --paginate "repos/$GH_REPO/compare/$prev...$TAG?per_page=100" --jq '.commits[].sha' |
+            while read -r sha; do
+              gh api "repos/$GH_REPO/commits/$sha/pulls" --jq '.[] | select(.merged_at != null and .base.ref == "main") | .number'
+            done | sort -un)
+          declare -A deployed
+          for pr in $prs; do
+            body=$(gh api "repos/$GH_REPO/pulls/$pr" --jq '.body // ""')
+            for issue in $(grep -oE 'Refs #[0-9]+' <<<"$body" | grep -oE '[0-9]+' | sort -un); do
+              deployed[$issue]+=" #$pr"
+            done
+          done
+          for issue in "${!deployed[@]}"; do
+            open=$(gh api "repos/$GH_REPO/issues/$issue" --jq 'select(.pull_request == null and .state == "open") | .number')
+            [ -n "$open" ] || continue
+            gh issue comment "$issue" --body "Deployed in $TAG by${deployed[$issue]}. Close this issue once the change is verified in production."
+            gh issue edit "$issue" --add-label pending-verify
+          done

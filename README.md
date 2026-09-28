@@ -83,6 +83,9 @@ git tag <tag> && git push origin <tag>
 
 Once the deploy succeeds, the workflow publishes a GitHub Release for the tag
 whose notes list the pull requests merged since the previous tag.
+It then comments on each open issue that a pull request in the release
+references with a `Refs #<n>` line, and labels it `pending-verify`; close the
+issue once the change is verified in production.
 
 Use a tag that does not already exist in GHCR:
 pushing an existing tag overwrites the image it names.
