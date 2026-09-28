@@ -5,8 +5,9 @@
   the steps: one branch and PR per change, then review rounds until
   `review-state.sh` reports `verdict: quiet` or the user stops them at one of
   the skill's questions.
-- Before opening a PR, and before every push that answers review feedback, work
-  through `.agents/pre-pr-checklist.md` against the branch diff, then run
+- Before opening a PR, before every push that answers review feedback, and
+  before pushing a branch rebased onto a base that moved, work through
+  `.agents/pre-pr-checklist.md` against the branch diff, then run
   `/code-review` and the OCR review in `.agents/ocr-review.md` against the base
   branch. The gate in `.claude/hooks/require-code-review.sh` denies
   `gh pr create`, and `.claude/skills/ship-change/open-pr.sh` refuses to push,

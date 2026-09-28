@@ -30,8 +30,9 @@ between independently triggered events, not only the intended success path.
 - Never commit or push directly to `main`. Use a dedicated branch named for the
   change type, such as `feat/<topic>`, `fix/<topic>`, or `chore/<topic>`.
 - Preserve unrelated working-tree changes and keep each diff focused.
-- Before the first push or PR for an implementation, and before every push
-  that answers review feedback, work through `.agents/pre-pr-checklist.md`
+- Before the first push or PR for an implementation, before every push that
+  answers review feedback, and before pushing a branch rebased onto a base
+  that moved, work through `.agents/pre-pr-checklist.md`
   against the branch diff, then run a dedicated code review against the base
   branch using `.agents/code-review.md`.
 - Verify and fix every actionable correctness, security, reliability, and
