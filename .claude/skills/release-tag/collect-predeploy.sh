@@ -1,14 +1,16 @@
 #!/bin/bash
 # Usage: collect-predeploy.sh
 #
-# Prints the pull requests a new tag would deploy (the latest v* tag..origin/main),
+# Prints the pull requests a new tag would deploy (the latest v* tag..origin/main's
+# current commit, printed in the range line),
 # the deploy/ files changed in that range, and the "Pre-deploy checks" section of
 # each pull request that has one.
 set -eo pipefail
 
 git fetch origin --tags --quiet
 prev=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
-range="$prev..origin/main"
+head=$(git rev-parse origin/main)
+range="$prev..$head"
 
 echo "range: $range"
 echo "deploy/ files changed:"

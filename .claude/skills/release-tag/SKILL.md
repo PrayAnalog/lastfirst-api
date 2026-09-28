@@ -15,7 +15,7 @@ before the tag exists.
 .claude/skills/release-tag/collect-predeploy.sh
 ```
 
-It fetches, then prints the range (latest `v*` tag..`origin/main`), the `deploy/`
+It fetches, then prints the range (latest `v*` tag..the commit `origin/main` is at), the `deploy/`
 files changed in it, the pull requests in it, and the "Pre-deploy checks"
 section of each pull request that has one. Do not read the pull request bodies
 yourself; the script's output is the whole input. An empty range means there is
@@ -41,5 +41,5 @@ Show the user one list, not one block per pull request:
 
 Stop after showing the list and wait for the user to confirm the prerequisites
 are done. Then pick the next SemVer tag after `git ls-remote --tags origin`,
-one that does not exist in GHCR, and push exactly one tag as the README
-describes.
+one that does not exist in GHCR, and push exactly one tag on the commit the
+range ended at, not on `HEAD`: `git tag <tag> <sha> && git push origin <tag>`.
