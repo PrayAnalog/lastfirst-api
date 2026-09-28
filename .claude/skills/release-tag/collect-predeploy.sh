@@ -8,7 +8,8 @@
 set -eo pipefail
 
 git fetch origin --tags --quiet
-prev=$(gh release list --limit 10000 --exclude-drafts --exclude-pre-releases --json tagName --jq '.[].tagName' | sort -V | tail -n 1)
+prev=$(gh release list --limit 10000 --exclude-drafts --exclude-pre-releases --json tagName --jq '.[].tagName' |
+  sed 's/-/~/' | sort -V | sed 's/~/-/' | tail -n 1)
 head=$(git rev-parse origin/main)
 range="$prev..$head"
 
@@ -17,10 +18,12 @@ echo "commits: $(git rev-list --count "$range")"
 echo "deploy/ files changed:"
 git diff --name-only "$range" -- deploy/ | sed 's/^/  /'
 
-prs=$(gh api --paginate "repos/{owner}/{repo}/compare/$prev...$head?per_page=100" --jq '.commits[].sha' |
-  while read -r sha; do
-    gh api "repos/{owner}/{repo}/commits/$sha/pulls" --jq '.[] | select(.merged_at != null and .base.ref == "main") | .number'
-  done | sort -un)
+shas=$(gh api --paginate "repos/{owner}/{repo}/compare/$prev...$head?per_page=100" --jq '.commits[].sha')
+prs=
+for sha in $shas; do
+  prs+=$'\n'$(gh api "repos/{owner}/{repo}/commits/$sha/pulls" --jq '.[] | select(.merged_at != null and .base.ref == "main") | .number')
+done
+prs=$(sort -un <<<"$prs")
 echo "pull requests: $(echo $prs)"
 
 for pr in $prs; do
