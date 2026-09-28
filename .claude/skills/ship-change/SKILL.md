@@ -94,8 +94,8 @@ validate it, and render it in the light theme. Run the CLI as
 change that version only in the same PR that updates the vendored skill.
 Attaching needs GitHub CLI 2.99 or later; check `gh --version`.
 
-When the diff changes at most five files other than tests, draw one
-architecture view and nothing else: no child view, data-flow view,
+When the diff changes at most five files other than `_test.go` files, draw
+one architecture view and nothing else: no child view, data-flow view,
 walkthrough or payload, whatever the pr-lens skill advises for non-trivial
 changes.
 
