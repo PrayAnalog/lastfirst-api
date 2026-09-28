@@ -2,8 +2,15 @@ lastfirst.app {
 	log {
 		format json
 	}
+	request_body {
+		max_size 8KiB
+	}
 	reverse_proxy app:8080 {
 		lb_try_duration 30s
 		lb_try_interval 250ms
+	}
+	handle_errors 413 {
+		header Content-Type application/json
+		respond `{"error":"request body too large"}` 413
 	}
 }
