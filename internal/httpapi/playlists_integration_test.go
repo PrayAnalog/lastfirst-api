@@ -5,10 +5,12 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -313,6 +315,41 @@ func TestCreatePlaylistLimitsBurstPerIP(t *testing.T) {
 	}
 	if code, _ := postPlaylist(t, h, "203.0.113.8", `{"input":"WL"}`); code != http.StatusBadRequest {
 		t.Errorf("other IP: status = %d, want %d", code, http.StatusBadRequest)
+	}
+}
+
+func TestCreatePlaylistRateLimitSetsRetryAfter(t *testing.T) {
+	h := newIntegrationHandler(t, &fakeYouTube{})
+	first := time.Now()
+	for i := range 5 {
+		if code, got := postPlaylist(t, h, "203.0.113.7", `{"input":"WL"}`); code != http.StatusBadRequest {
+			t.Fatalf("request %d: status = %d, want %d; body %v", i+1, code, http.StatusBadRequest, got)
+		}
+	}
+	r := httptest.NewRequest("POST", "/api/playlists", strings.NewReader(`{"input":"WL"}`))
+	r.Header.Set("X-Forwarded-For", "203.0.113.7")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	refused := time.Now()
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("6th request: status = %d, want %d", w.Code, http.StatusTooManyRequests)
+	}
+
+	got, err := strconv.Atoi(w.Header().Get("Retry-After"))
+	if err != nil {
+		t.Fatalf("Retry-After = %q, want whole seconds", w.Header().Get("Retry-After"))
+	}
+	lo := int(math.Ceil(first.Add(time.Minute).Sub(refused).Seconds()))
+	if got < lo || got > 60 {
+		t.Errorf("Retry-After = %d, want between %d and 60 (the first token back is a minute after the first request)", got, lo)
+	}
+
+	r = httptest.NewRequest("POST", "/api/playlists", strings.NewReader(`{"input":"WL"}`))
+	r.Header.Set("X-Forwarded-For", "203.0.113.8")
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if v := w.Header().Get("Retry-After"); v != "" {
+		t.Errorf("allowed request: Retry-After = %q, want none", v)
 	}
 }
 
