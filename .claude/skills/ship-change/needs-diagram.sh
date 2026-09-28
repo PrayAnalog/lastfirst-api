@@ -11,7 +11,7 @@ base=${1:?usage: needs-diagram.sh <base>}
 base=${base#origin/}
 base_sha=$(git rev-parse --verify --quiet "origin/$base^{commit}" || git rev-parse --verify "$base^{commit}")
 
-files=$(git -c core.quotePath=false diff --name-only --no-renames "$base_sha...HEAD")
+files=$(git diff --name-only -z --no-renames "$base_sha...HEAD" | tr '\0' '\n')
 left=$(grep -Ev '(_test\.go|\.md)$|^\.claude/|^\.agents/' <<<"$files" || true)
 
 if [ -z "$left" ]; then
