@@ -142,6 +142,11 @@ English headings below:
 - **Known limitations** — findings declined as accepted risk, each with the
   sequence it needs. Omit the section when there are none.
 
+Reference each issue the PR works on with its own `Refs #<n>` line. Never use
+a closing keyword (`Fixes`, `Closes`, `Resolves`): it closes the issue when
+the PR merges into `main`, before the change is deployed. The issue is closed
+after the change is verified in production.
+
 For a stacked PR, say which PR it builds on. CodeRabbit skips PRs whose base is
 not `main`; comment `@coderabbitai review` on those.
 

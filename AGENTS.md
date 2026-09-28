@@ -40,6 +40,9 @@ between independently triggered events, not only the intended success path.
   Push and create the PR only when no actionable findings remain.
 - For implementation requests, commit completed changes, push the branch, and
   open a PR with `gh pr create`. Wait for review; merge only when the user asks.
+- In a PR body, reference each issue with its own `Refs #<n>` line, never a
+  closing keyword such as `Fixes` or `Closes`: issues are closed after the
+  change is verified in production, not when the PR merges.
 - Do not release, push images, or deploy without explicit authorization.
 - For code-review requests, read `.agents/code-review.md`.
 
