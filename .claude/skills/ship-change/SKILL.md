@@ -81,7 +81,13 @@ shutdown. For any other change, run `git diff --check`.
 
 ## 5. Open the PR
 
-First draw the change with the `pr-lens` skill (`.claude/skills/pr-lens`):
+First decide from `git diff --stat <base>...HEAD` whether the change needs a
+diagram. Skip it, and pass `open-pr.sh` no diagrams, when the diff touches
+only tests, documentation or process files (`*.md`, `.claude/`, `.agents/`),
+or changes at most two files in one directory without touching `deploy/`,
+`Dockerfile` or `.github/workflows/`.
+
+Otherwise draw the change with the `pr-lens` skill (`.claude/skills/pr-lens`):
 write `.pr-lens/graph.json` from `git diff --find-renames <base>...HEAD`,
 validate it, and render it in the light theme. Run the CLI as
 `npx @coldtea/pr-lens-cli@0.7.0` wherever the skill writes `@latest`, and
@@ -113,7 +119,8 @@ English headings below:
 - **Problem** — what fails today, as a concrete scenario.
 - **Diagram** — the architecture view, then the data-flow view when the change
   has a sequence worth following, each as `![alt](.pr-lens/<file>.svg)` with
-  the same path passed to `--attach`.
+  the same path passed to `--attach`. Omit the section when the diagram was
+  skipped.
 - **Approach** — what changed and why this shape, including every bound and
   the event it counts from.
 - **Validation** — what section 3 did not cover: commands skipped or added,
