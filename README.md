@@ -26,6 +26,12 @@ Accepts a playlist URL or a raw playlist ID. Returns the reversed video
 order as a list of `watch_videos` links (chunked to 50 videos each), along
 with source/reverse playlist titles and item counts.
 
+Every response, API and static files alike, carries `Content-Security-Policy`,
+`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` and
+`Permissions-Policy` headers. The policy allows scripts only from this origin
+and images only from this origin and `i.ytimg.com`, so the frontend must not
+use inline scripts.
+
 ## Configuration
 
 | Env var | Default | Description |
