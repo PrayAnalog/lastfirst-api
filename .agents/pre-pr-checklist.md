@@ -160,7 +160,20 @@ them through the Docker API can also inspect containers, and inspect
 returns their environment, `YT_API_KEY` included. #110, #111 and #112 each
 drew a review round for one of these.
 
-## 11. Answer each review round in the thread
+## 11. Check what token a workflow trigger gives a fork pull request
+
+Applies to `.github/workflows/`.
+
+A `pull_request` workflow run for a pull request from a fork gets a read-only
+`GITHUB_TOKEN`, whatever its `permissions` block asks for, so a job that
+writes (labels, comments, releases) fails once such a pull request is merged.
+A job that has to write runs on `pull_request_target` instead, which runs the
+workflow file from the default branch with a writable token. That job must not
+check out or run the pull request's code, and takes pull request fields
+such as the body only through `env:`, never through `${{ }}` inside `run:`.
+#143 drew a review round for this.
+
+## 12. Answer each review round in the thread
 
 Sort the findings as `ship-change` step 6 does: ask before a fix that needs new
 state, permissions or triggers, decline accepted risks with the sequence they
