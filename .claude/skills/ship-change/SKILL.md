@@ -143,8 +143,9 @@ English headings below:
   sequence it needs. Omit the section when there are none.
 
 Reference each issue the PR works on with its own `Refs #<n>` line. Never use
-a closing keyword (`Fixes`, `Closes`, `Resolves`): it closes the issue when
-the PR merges into `main`, before the change is deployed. The issue is closed
+a closing keyword (`Fixes`, `Closes`, `Resolves`) followed by an issue number,
+in the body or in a commit message: it closes the issue when the PR merges
+into `main`, before the change is deployed. The issue is closed
 after the change is verified in production.
 
 For a stacked PR, say which PR it builds on. CodeRabbit skips PRs whose base is
