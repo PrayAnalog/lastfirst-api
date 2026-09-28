@@ -2,7 +2,9 @@
 
 Work through this against the branch diff before `gh pr create`, and again
 before every push that answers review feedback. Each item stands for a defect
-that reached review in this repository at least once.
+that reached review in this repository at least once. A section that names the
+paths it applies to does not apply to a diff that touches none of them; say so
+and move on.
 
 ## 0. The diff is one change
 
@@ -42,6 +44,8 @@ provider bodies or credential-bearing URLs to recover diagnostic detail.
 
 ## 3. Derive coupled limits from one source and order them
 
+Applies to `cmd/`, `internal/`, `Dockerfile` and `deploy/`.
+
 List every bound the change touches — handler deadline, `ReadHeaderTimeout`,
 `ReadTimeout`, `WriteTimeout`, `IdleTimeout`, shutdown deadline, the
 container's `stop_grace_period`, and the Caddy timeouts in front of the
@@ -51,6 +55,8 @@ as headroom. Write each wider bound as an expression over
 the narrower one so the ordering cannot drift when one value is edited.
 
 ## 4. Claim a metered resource per call, not per prediction
+
+Applies to `internal/httpapi`, `internal/ratelimit` and `internal/youtube`.
 
 Reserve before the call, never after: a call made in order to size the
 reservation has already spent the resource.
@@ -74,6 +80,9 @@ over-charging stops the service early, under-charging spends what the meter is
 there to protect.
 
 ## 5. Check the far side of every boundary the change touches
+
+Applies to `cmd/`, `internal/`, `Dockerfile`, `deploy/` and
+`.github/workflows/`.
 
 An application-side lifecycle change is unfinished until `deploy/` agrees:
 `docker compose up -d app` sends `SIGTERM` to the old container and kills it
@@ -131,6 +140,8 @@ Check every test the diff adds, changes or removes against **Test changes** in
 `.agents/code-review.md`; Codex reviews tests against it.
 
 ## 10. Bound what a log keeps and who can read it
+
+Applies to `cmd/`, `internal/` and `deploy/`.
 
 Output that grows with traffic — a per-request log line, an access log — is
 retained state. Every hop that stores it needs a size bound in the same PR:
