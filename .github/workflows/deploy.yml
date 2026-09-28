@@ -56,6 +56,7 @@ jobs:
           shopt -s inherit_errexit
           prev=$(gh release list --exclude-drafts --exclude-pre-releases --json tagName --jq 'map(.tagName) | .[(index(env.TAG) // -1) + 1]')
           gh release view "$TAG" --json tagName >/dev/null || gh release create "$TAG" --verify-tag --generate-notes
+          [ -n "$prev" ] || exit 0
           prs=$(gh api --paginate "repos/$GH_REPO/compare/$prev...$TAG?per_page=100" --jq '.commits[].sha' |
             while read -r sha; do
               gh api "repos/$GH_REPO/commits/$sha/pulls" --jq '.[] | select(.merged_at != null and .base.ref == "main") | .number'
