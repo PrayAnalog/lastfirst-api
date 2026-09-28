@@ -2,8 +2,10 @@ package httpapi
 
 import (
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -63,4 +65,30 @@ func TestCaddyBodyLimitMatchesApp(t *testing.T) {
 		}
 	}
 	t.Errorf("Caddyfile has no line %q", want)
+}
+
+func TestSPAUnrootedPathStaysInStaticDir(t *testing.T) {
+	root := t.TempDir()
+	staticDir := filepath.Join(root, "static")
+	if err := os.Mkdir(staticDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "outside.txt"), []byte("outside"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	s := &Server{staticDir: staticDir}
+	get := func(path string) (int, string) {
+		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r.URL.Path = path
+		w := httptest.NewRecorder()
+		s.spa().ServeHTTP(w, r)
+		return w.Code, w.Body.String()
+	}
+
+	existCode, existBody := get("../outside.txt")
+	missCode, missBody := get("../missing.txt")
+	if existCode != missCode || existBody != missBody {
+		t.Fatalf("response reveals a file outside staticDir: existing %d %q, missing %d %q", existCode, existBody, missCode, missBody)
+	}
 }
