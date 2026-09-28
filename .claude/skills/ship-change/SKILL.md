@@ -94,6 +94,10 @@ validate it, and render it in the light theme. Run the CLI as
 change that version only in the same PR that updates the vendored skill.
 Attaching needs GitHub CLI 2.99 or later; check `gh --version`.
 
+Write `.pr-lens/graph.json` with the Write tool and run `validate` as a
+command of its own. When it fails, fix only the elements it names with the
+Edit tool; do not write the document again or pipe it through a heredoc.
+
 Write the body to a file named for this PR's branch in the session scratchpad,
 not to a shared path such as `.pr-lens/body.md`, which other sessions in the
 worktree overwrite. Write it in its own step, not inside the command that
