@@ -297,22 +297,26 @@ func TestCreatePlaylistLimitsBurstPerIP(t *testing.T) {
 }
 
 func TestCreatePlaylistStopsAtDailyBudget(t *testing.T) {
+	items := make([]fakeItem, 2000)
+	for i := range items {
+		items[i] = fakeItem{videoID: fmt.Sprintf("v%d", i), publishedAt: "2024-01-02T03:04:05Z"}
+	}
 	fake := &fakeYouTube{playlists: map[string]fakePlaylist{
-		"PLmax": {title: "max", itemCount: 2000},
+		"PLmax": {title: "max", itemCount: len(items), items: items},
 	}}
 	h := newIntegrationHandler(t, fake)
 
 	for i := range 195 {
 		ip := fmt.Sprintf("198.51.100.%d", i)
 		if code, got := postPlaylist(t, h, ip, `{"input":"PLmax"}`); code != http.StatusOK {
-			t.Fatalf("request %d: status = %d, want %d; body %v", i+1, code, http.StatusOK, got)
+			t.Fatalf("request %d: status = %d, want %d; error %v", i+1, code, http.StatusOK, got["error"])
 		}
 	}
 	code, got := postPlaylist(t, h, "192.0.2.200", `{"input":"PLmax"}`)
 	if code != http.StatusTooManyRequests || got["error"] != "daily API quota exhausted, try again after quota resets at midnight Pacific Time" {
-		t.Errorf("196th request: status = %d, body %v; want %d quota error", code, got, http.StatusTooManyRequests)
+		t.Errorf("196th request: status = %d, error %v; want %d quota error", code, got["error"], http.StatusTooManyRequests)
 	}
-	if n := fake.itemCalls.Load(); n != 195 {
-		t.Errorf("playlistItems calls = %d, want 195", n)
+	if n := fake.itemCalls.Load(); n != 7800 {
+		t.Errorf("playlistItems calls = %d, want 7800", n)
 	}
 }
