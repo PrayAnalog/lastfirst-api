@@ -12,5 +12,9 @@
   `gh pr create`, and `.claude/skills/ship-change/open-pr.sh` refuses to push,
   until the review stamp is present; neither verifies that these steps
   actually ran.
+- Run `record-review.sh` only after `/code-review` and the OCR `delegate
+  preview` and `rule` commands have produced output in the same turn, including
+  for a one-line review fix: the stamp records that a review ran, it does not
+  run one.
 - When reusing code from a closed PR, re-check it against the current
   checklist; a closed PR's code is unreviewed input, not a verified pattern.
