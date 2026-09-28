@@ -44,7 +44,7 @@ func TestStopGracePeriodOutlastsShutdown(t *testing.T) {
 }
 
 func TestCaddyRetryCoversDrainAndRestart(t *testing.T) {
-	try := deployDuration(t, "../../deploy/Caddyfile", "", regexp.MustCompile(`(?m)^\s*lb_try_duration\s+(\S+)`), 0)
+	try := deployDuration(t, "../../deploy/caddy/Caddyfile", "", regexp.MustCompile(`(?m)^\s*lb_try_duration\s+(\S+)`), 0)
 	if want := shutdownTimeout + 10*time.Second; try < want {
 		t.Fatalf("lb_try_duration = %s, want at least shutdownTimeout + 10s = %s", try, want)
 	}

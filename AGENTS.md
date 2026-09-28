@@ -57,7 +57,7 @@ between independently triggered events, not only the intended success path.
   quota period.
 - Configure HTTP server and client timeouts deliberately. For lifecycle changes,
   inspect the app, `Dockerfile`, `deploy/docker-compose.yml`, and
-  `deploy/Caddyfile` together; wait for both the listener and in-flight
+  `deploy/caddy/Caddyfile` together; wait for both the listener and in-flight
   handlers, and fit shutdown inside the container's stop grace period.
 - Fully consume and validate bounded request bodies before starting expensive
   or billable work; a successful first decode alone does not prove the body is
