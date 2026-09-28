@@ -95,7 +95,7 @@ func NewDailyBudget(limit int) *DailyBudget {
 
 // Reserve commits cost units against today's budget and reports whether
 // there was room for them.
-func (b *DailyBudget) Reserve(cost int) bool {
+func (b *DailyBudget) Reserve(cost int) (bool, time.Duration) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -105,10 +105,10 @@ func (b *DailyBudget) Reserve(cost int) bool {
 		b.resetAt = nextPacificMidnight(now)
 	}
 	if b.used+cost > b.limit {
-		return false
+		return false, b.resetAt.Sub(now)
 	}
 	b.used += cost
-	return true
+	return true, 0
 }
 
 func nextPacificMidnight(t time.Time) time.Time {

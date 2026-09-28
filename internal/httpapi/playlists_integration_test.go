@@ -384,4 +384,31 @@ func TestCreatePlaylistStopsAtDailyBudget(t *testing.T) {
 	if n := fake.itemCalls.Load(); n != 7800 {
 		t.Errorf("playlistItems calls = %d, want 7800", n)
 	}
+
+	today, err := time.ParseInLocation(time.DateOnly, day, pacific)
+	if err != nil {
+		t.Fatal(err)
+	}
+	midnight := today.AddDate(0, 0, 1)
+	r := httptest.NewRequest("POST", "/api/playlists", strings.NewReader(`{"input":"PLmax"}`))
+	r.Header.Set("X-Forwarded-For", "192.0.2.201")
+	w := httptest.NewRecorder()
+	before := time.Now()
+	h.ServeHTTP(w, r)
+	after := time.Now()
+	if after.In(pacific).Format(time.DateOnly) != day {
+		t.Skip("crossed midnight Pacific Time, when the daily budget resets")
+	}
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("197th request: status = %d, want %d", w.Code, http.StatusTooManyRequests)
+	}
+	retryAfter, err := strconv.Atoi(w.Header().Get("Retry-After"))
+	if err != nil {
+		t.Fatalf("Retry-After = %q, want whole seconds", w.Header().Get("Retry-After"))
+	}
+	lo := int(math.Ceil(midnight.Sub(after).Seconds()))
+	hi := int(math.Ceil(midnight.Sub(before).Seconds()))
+	if retryAfter < lo || retryAfter > hi {
+		t.Errorf("Retry-After = %d, want between %d and %d (seconds until midnight Pacific Time)", retryAfter, lo, hi)
+	}
 }
