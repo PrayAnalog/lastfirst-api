@@ -118,7 +118,11 @@ func newIntegrationHandler(t *testing.T, fake *fakeYouTube) http.Handler {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return httpapi.New(yt, t.TempDir()).Handler()
+	api, err := httpapi.New(yt, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return api.Handler()
 }
 
 func postPlaylist(t *testing.T, h http.Handler, ip, body string) (int, map[string]any) {

@@ -28,7 +28,11 @@ func newTestHandler(t *testing.T) http.Handler {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return New(yt, t.TempDir()).Handler()
+	srv, err := New(yt, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return srv.Handler()
 }
 
 func requestRecords(t *testing.T, buf *bytes.Buffer) []map[string]any {
