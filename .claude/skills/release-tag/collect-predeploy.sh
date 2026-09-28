@@ -13,6 +13,7 @@ head=$(git rev-parse origin/main)
 range="$prev..$head"
 
 echo "range: $range"
+echo "commits: $(git rev-list --count "$range")"
 echo "deploy/ files changed:"
 git diff --name-only "$range" -- deploy/ | sed 's/^/  /'
 

@@ -18,8 +18,8 @@ before the tag exists.
 It fetches, then prints the range (latest GitHub Release's tag..the commit `origin/main` is at; a tag whose deploy failed has no release, so it is not the start), the `deploy/`
 files changed in it, the pull requests in it, and the "Pre-deploy checks"
 section of each pull request that has one. Do not read the pull request bodies
-yourself; the script's output is the whole input. An empty range means there is
-nothing to deploy: say so and stop.
+yourself; the script's output is the whole input. `commits: 0` means there is
+nothing to deploy: say so and stop before choosing a tag.
 
 ## 2. Merge and order
 
