@@ -1,14 +1,14 @@
 #!/bin/bash
 # Usage: collect-predeploy.sh
 #
-# Prints the pull requests a new tag would deploy (the latest v* tag..origin/main's
-# current commit, printed in the range line),
-# the deploy/ files changed in that range, and the "Pre-deploy checks" section of
-# each pull request that has one.
+# Prints the pull requests a new tag would deploy (the tag of the latest GitHub
+# Release, which exists only after a successful deploy, up to the commit
+# origin/main is at, printed in the range line), the deploy/ files changed in
+# that range, and the "Pre-deploy checks" section of each pull request that has one.
 set -eo pipefail
 
 git fetch origin --tags --quiet
-prev=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+prev=$(gh release list --limit 10000 --exclude-drafts --exclude-pre-releases --json tagName --jq '.[].tagName' | sort -V | tail -n 1)
 head=$(git rev-parse origin/main)
 range="$prev..$head"
 
@@ -16,7 +16,10 @@ echo "range: $range"
 echo "deploy/ files changed:"
 git diff --name-only "$range" -- deploy/ | sed 's/^/  /'
 
-prs=$(git log --format=%s "$range" | { grep -oE '\(#[0-9]+\)$' || true; } | tr -d '(#)' | sort -n)
+prs=$(gh api --paginate "repos/{owner}/{repo}/compare/$prev...$head?per_page=100" --jq '.commits[].sha' |
+  while read -r sha; do
+    gh api "repos/{owner}/{repo}/commits/$sha/pulls" --jq '.[] | select(.merged_at != null and .base.ref == "main") | .number'
+  done | sort -un)
 echo "pull requests: $(echo $prs)"
 
 for pr in $prs; do
