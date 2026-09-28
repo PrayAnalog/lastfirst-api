@@ -160,18 +160,20 @@ them through the Docker API can also inspect containers, and inspect
 returns their environment, `YT_API_KEY` included. #110, #111 and #112 each
 drew a review round for one of these.
 
-## 11. Check what token a workflow trigger gives a fork pull request
+## 11. Run a job that writes after a merge on push to main
 
 Applies to `.github/workflows/`.
 
-A `pull_request` workflow run for a pull request from a fork gets a read-only
-`GITHUB_TOKEN`, whatever its `permissions` block asks for, so a job that
-writes (labels, comments, releases) fails once such a pull request is merged.
-A job that has to write runs on `pull_request_target` instead, which runs the
-workflow file from the default branch with a writable token. That job must not
-check out or run the pull request's code, and takes pull request fields
-such as the body only through `env:`, never through `${{ }}` inside `run:`.
-#143 drew a review round for this.
+By default a `pull_request` run for a pull request from a fork gets a
+read-only `GITHUB_TOKEN`, so a job that writes (labels, comments, releases)
+fails when such a pull request is merged. Do not move that job to
+`pull_request_target`: GitHub blocks it by default in public repositories
+without an event policy that allows it, enforced from 2026-11-02, and this
+repository does not define such a policy. Run a job that writes after a merge on `push`
+to `main`, and look up the merged pull request behind each pushed commit
+with `commits/<sha>/pulls`, as `pending-deploy.yml` does. Take event fields
+only through `env:`, never through `${{ }}` inside `run:`. #143 and #151
+each drew a review round for this.
 
 ## 12. Answer each review round in the thread
 
