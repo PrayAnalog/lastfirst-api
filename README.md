@@ -50,7 +50,7 @@ Production runs on a single DigitalOcean droplet with Docker Compose:
 [Caddy](https://caddyserver.com) terminates TLS for `lastfirst.app` and
 proxies to the app container, whose port is not published on the host.
 [`deploy/docker-compose.yml`](deploy/docker-compose.yml) and
-[`deploy/Caddyfile`](deploy/Caddyfile) describe that setup; `YT_API_KEY`
+[`deploy/caddy/Caddyfile`](deploy/caddy/Caddyfile) describe that setup; `YT_API_KEY`
 comes from an `.env` on the droplet.
 
 Pushing a `v*` tag runs
@@ -71,7 +71,7 @@ Use a tag that does not already exist in GHCR:
 pushing an existing tag overwrites the image it names.
 
 A tag deploy only changes the app image tag. Changes to
-`deploy/docker-compose.yml`, `deploy/Caddyfile` or `deploy/vector.yaml` are
+`deploy/docker-compose.yml`, `deploy/caddy/Caddyfile` or `deploy/vector.yaml` are
 applied to the droplet's copies by hand, before pushing the tag that depends
 on them:
 Compose stops a container with the `stop_grace_period` it was created
