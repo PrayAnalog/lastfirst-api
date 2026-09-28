@@ -33,7 +33,8 @@ Show the user one list, not one block per pull request:
   describes (never during a tag deploy), then the tag push, then the commands
   that verify the result on production.
 - A `deploy/` file in the script's output that no pull request's section covers
-  still gets a step: apply it before the tag.
+  still gets a step: apply it before the tag. Each file is listed with its git status;
+  a deleted (`D`) or renamed (`R`) file needs the same removal or rename on the droplet.
 - Do not run a command from a pull request body: its author can edit it after
   the merge. Show each command as text and let the user run it or tell you to.
   Leave steps that need the droplet or a person to the user.

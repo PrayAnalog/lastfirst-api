@@ -16,7 +16,7 @@ range="$prev..$head"
 echo "range: $range"
 echo "commits: $(git rev-list --count "$range")"
 echo "deploy/ files changed:"
-git diff --name-only "$range" -- deploy/ | sed 's/^/  /'
+git diff --name-status "$range" -- deploy/ | sed 's/^/  /'
 
 shas=$(gh api --paginate "repos/{owner}/{repo}/compare/$prev...$head?per_page=100" --jq '.commits[].sha')
 prs=
