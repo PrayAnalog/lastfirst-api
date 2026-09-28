@@ -81,11 +81,13 @@ shutdown. For any other change, run `git diff --check`.
 
 ## 5. Open the PR
 
-First decide from `git diff --stat <base>...HEAD` whether the change needs a
-diagram. Skip it, and pass `open-pr.sh` no diagrams, when the diff touches
-only tests, documentation or process files (`*.md`, `.claude/`, `.agents/`),
-or changes at most two files in one directory without touching `deploy/`,
-`Dockerfile` or `.github/workflows/`.
+First decide from `git diff --name-only --no-renames <base>...HEAD` whether
+the change needs a diagram. Set aside tests, documentation and process files
+(`_test.go`, `*.md`, `.claude/`, `.agents/`). Skip the diagram, and pass
+`open-pr.sh` no diagrams, when nothing is left, or when every file left is in
+one directory and none is `Dockerfile` or under `deploy/` or
+`.github/workflows/`. Files left in more than one directory cross a
+boundary the diagram shows, however few they are.
 
 Otherwise draw the change with the `pr-lens` skill (`.claude/skills/pr-lens`):
 write `.pr-lens/graph.json` from `git diff --find-renames <base>...HEAD`,
