@@ -1,8 +1,11 @@
 package httpapi
 
 import (
+	"fmt"
 	"net/http/httptest"
+	"os"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -46,4 +49,18 @@ func TestWatchLinksLabelIncludesReverseTitle(t *testing.T) {
 			t.Errorf("links[%d].Label = %q, want %q", i, l.Label, want[i])
 		}
 	}
+}
+
+func TestCaddyBodyLimitMatchesApp(t *testing.T) {
+	caddyfile, err := os.ReadFile("../../deploy/caddy/Caddyfile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Sprintf("max_size %d", maxRequestBody)
+	for _, line := range strings.Split(string(caddyfile), "\n") {
+		if strings.TrimSpace(line) == want {
+			return
+		}
+	}
+	t.Errorf("Caddyfile has no line %q", want)
 }
