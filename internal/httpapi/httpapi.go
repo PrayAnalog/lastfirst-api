@@ -138,7 +138,8 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusRequestEntityTooLarge, "playlist too large to process right now")
 		return
 	}
-	if !s.budget.Reserve(cost) {
+	if ok, wait := s.budget.Reserve(cost); !ok {
+		w.Header().Set("Retry-After", strconv.Itoa(int((wait+time.Second-1)/time.Second)))
 		writeError(w, http.StatusTooManyRequests, "daily API quota exhausted, try again after quota resets at midnight Pacific Time")
 		return
 	}

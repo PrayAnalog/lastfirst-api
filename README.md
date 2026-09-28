@@ -39,6 +39,10 @@ A client over the per-IP rate limit gets `429 Too Many Requests` with a
 `Retry-After` header giving the whole seconds until its next request is
 accepted.
 
+Once the service's daily YouTube quota budget is spent, requests get
+`429 Too Many Requests` with a `Retry-After` header giving the whole seconds
+until the budget resets.
+
 ## Configuration
 
 | Env var | Default | Description |
