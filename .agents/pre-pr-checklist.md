@@ -183,9 +183,10 @@ caller of a function whose signature this diff changes, or a test that
 builds on the old one, with no conflict in the file that then fails to
 build. Before pushing the rebased branch, search the rebased tree for every
 function whose signature the diff changes, run the section 3 checks of
-`ship-change`, then `/code-review` and the OCR review over the rebased diff,
-and only then run `record-review.sh`. The rebases of #127 onto #126 and of
-#132 onto #128 each broke this way.
+`ship-change`, then `/code-review` and the OCR review over
+`git diff <base>...HEAD`, and only then run `record-review.sh <base>`, with
+the pull request's base as `<base>` in all three. The rebases of #127 onto
+#126 and of #132 onto #128 each broke this way.
 
 ## 13. Answer each review round in the thread
 
