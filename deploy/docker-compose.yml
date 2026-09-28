@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/prayanalog/lastfirst:v1
+    image: ghcr.io/prayanalog/lastfirst:${APP_TAG:?set by lastfirst-deploy}
     restart: unless-stopped
     stop_grace_period: 25s
     environment:

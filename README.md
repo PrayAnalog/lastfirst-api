@@ -70,7 +70,10 @@ whose notes list the pull requests merged since the previous tag.
 Use a tag that does not already exist in GHCR:
 pushing an existing tag overwrites the image it names.
 
-A tag deploy only changes the app image tag. Changes to
+A tag deploy only changes the app image tag, which it writes into the
+droplet's copy of the app `image` line; in `deploy/docker-compose.yml` that
+line ends in `${APP_TAG}` instead, so keep the droplet's line when applying a
+change. Changes to
 `deploy/docker-compose.yml`, `deploy/caddy/Caddyfile` or `deploy/vector.yaml` are
 applied to the droplet's copies by hand, before pushing the tag that depends
 on them:
