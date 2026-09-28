@@ -199,6 +199,24 @@ func TestCreatePlaylistErrors(t *testing.T) {
 			wantError:  "invalid request body",
 		},
 		{
+			name: "second JSON value after the first",
+			body: `{"input":"PLx"}{"input":"PLx"}`,
+			fake: &fakeYouTube{
+				playlists: map[string]fakePlaylist{"PLx": {title: "x"}},
+			},
+			wantStatus: http.StatusBadRequest,
+			wantError:  "invalid request body",
+		},
+		{
+			name: "body over 8 KiB after a valid value",
+			body: `{"input":"PLx"}` + strings.Repeat(" ", 8<<10),
+			fake: &fakeYouTube{
+				playlists: map[string]fakePlaylist{"PLx": {title: "x"}},
+			},
+			wantStatus: http.StatusRequestEntityTooLarge,
+			wantError:  "request body too large",
+		},
+		{
 			name:       "not a playlist",
 			body:       `{"input":"https://example.com/watch?v=abc"}`,
 			fake:       &fakeYouTube{},

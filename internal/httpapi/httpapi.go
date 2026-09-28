@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -17,7 +18,10 @@ import (
 	"ytreverse/internal/ytinput"
 )
 
-const watchChunk = 50
+const (
+	watchChunk     = 50
+	maxRequestBody = 8 << 10
+)
 
 // Quota policy: YouTube's default daily API quota is 10,000 units. We only
 // budget 8,000/day for this endpoint, keeping headroom for other usage of
@@ -84,7 +88,13 @@ func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Input string `json:"input"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxRequestBody))
+	var tooLarge *http.MaxBytesError
+	if errors.As(err, &tooLarge) {
+		writeError(w, http.StatusRequestEntityTooLarge, "request body too large")
+		return
+	}
+	if err != nil || json.Unmarshal(body, &req) != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}

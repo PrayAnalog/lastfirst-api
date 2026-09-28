@@ -24,7 +24,9 @@ separate private repository) as static files.
 
 Accepts a playlist URL or a raw playlist ID. Returns the reversed video
 order as a list of `watch_videos` links (chunked to 50 videos each), along
-with source/reverse playlist titles and item counts.
+with source/reverse playlist titles and item counts. A request body over
+8 KiB is rejected with `413`, and a body holding anything after the JSON
+object with `400`.
 
 ## Configuration
 
