@@ -1,6 +1,6 @@
 ---
 name: ship-change
-description: Take an implementation request in lastfirst-api from requirement to a pull request with no actionable review-bot findings left — split it into one PR per change, implement each on its own branch from origin/main, pass the pre-PR checklist, /code-review and the OCR review, open the PR, then repeat review rounds until every CodeRabbit and Codex finding is fixed or declined with evidence. Use for any request here to implement, fix, harden or change behavior ("구현해", "고쳐", "PR 올려"), even when the request does not mention review, branches or PRs.
+description: Takes an implementation request in lastfirst-api from requirement to a pull request with no actionable review-bot findings left — splits it into one PR per change, implements each on its own branch from origin/main, passes the pre-PR checklist, /code-review and the OCR review, opens the PR, then repeats review rounds until every CodeRabbit and Codex finding is fixed or declined with evidence. Use for any request here to implement, fix, harden or change behavior ("구현해", "고쳐", "PR 올려"), even when the request does not mention review, branches or PRs.
 ---
 
 # Ship a change
