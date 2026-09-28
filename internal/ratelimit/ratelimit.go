@@ -5,15 +5,19 @@
 package ratelimit
 
 import (
+	"container/list"
 	"sync"
 	"time"
 )
+
+const maxBuckets = 10000
 
 // IPLimiter is a per-IP token bucket. Each IP starts with burst tokens and
 // regains one every refill; a request is allowed only while tokens remain.
 type IPLimiter struct {
 	mu      sync.Mutex
 	buckets map[string]*bucket
+	order   list.List
 	burst   int
 	refill  time.Duration
 }
@@ -21,6 +25,7 @@ type IPLimiter struct {
 type bucket struct {
 	tokens   int
 	lastSeen time.Time
+	elem     *list.Element
 }
 
 func NewIPLimiter(burst int, refill time.Duration) *IPLimiter {
@@ -36,13 +41,19 @@ func (l *IPLimiter) Allow(ip string) bool {
 	now := time.Now()
 	b, ok := l.buckets[ip]
 	if !ok {
-		l.buckets[ip] = &bucket{tokens: l.burst - 1, lastSeen: now}
+		if len(l.buckets) >= maxBuckets {
+			oldest := l.order.Front()
+			delete(l.buckets, oldest.Value.(string))
+			l.order.Remove(oldest)
+		}
+		l.buckets[ip] = &bucket{tokens: l.burst - 1, lastSeen: now, elem: l.order.PushBack(ip)}
 		return true
 	}
 
 	if refilled := int(now.Sub(b.lastSeen) / l.refill); refilled > 0 {
 		b.tokens = min(b.tokens+refilled, l.burst)
 		b.lastSeen = now
+		l.order.MoveToBack(b.elem)
 	}
 	if b.tokens <= 0 {
 		return false
@@ -61,6 +72,7 @@ func (l *IPLimiter) cleanupLoop() {
 		for ip, b := range l.buckets {
 			if now.Sub(b.lastSeen) > idleAfter {
 				delete(l.buckets, ip)
+				l.order.Remove(b.elem)
 			}
 		}
 		l.mu.Unlock()
