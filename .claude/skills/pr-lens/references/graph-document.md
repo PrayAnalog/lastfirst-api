@@ -6,6 +6,25 @@ The validator enforces the same thing from a JSON Schema, published at `https://
 
 Every schema here is **strict**: an unknown key is a rejection, not a warning. A field with a default may be left out.
 
+## Contents
+
+- The document
+- Ids
+- Deltas
+- Lanes
+- Nodes
+- Edges
+- Flows
+  - Sample traffic
+- Stats
+- Views
+  - Choosing architecture views
+- Walkthrough
+- Layout
+- File references
+- Length limits
+- Then validate
+
 ## The document
 
 ```json
