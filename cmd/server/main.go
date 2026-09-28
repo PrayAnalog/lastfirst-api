@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata"
 
 	"ytreverse/internal/config"
 	"ytreverse/internal/httpapi"
@@ -29,7 +30,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	srv := httpapi.New(yt, cfg.StaticDir)
+	srv, err := httpapi.New(yt, cfg.StaticDir)
+	if err != nil {
+		log.Fatal(err)
+	}
 	server := &http.Server{Addr: cfg.Addr, Handler: srv.Handler()}
 
 	sigCtx, stop := signal.NotifyContext(ctx, syscall.SIGTERM)

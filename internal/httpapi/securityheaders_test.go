@@ -19,7 +19,11 @@ func TestHandlerSetsSecurityHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h := New(yt, dir).Handler()
+	srv, err := New(yt, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := srv.Handler()
 
 	want := map[string]string{
 		"Content-Security-Policy": "default-src 'self'; img-src 'self' https://i.ytimg.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",

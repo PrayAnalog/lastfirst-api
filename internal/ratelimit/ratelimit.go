@@ -87,10 +87,15 @@ type DailyBudget struct {
 	limit   int
 	used    int
 	resetAt time.Time
+	pacific *time.Location
 }
 
-func NewDailyBudget(limit int) *DailyBudget {
-	return &DailyBudget{limit: limit, resetAt: nextPacificMidnight(time.Now())}
+func NewDailyBudget(limit int) (*DailyBudget, error) {
+	pacific, err := time.LoadLocation("America/Los_Angeles")
+	if err != nil {
+		return nil, err
+	}
+	return &DailyBudget{limit: limit, resetAt: nextPacificMidnight(time.Now(), pacific), pacific: pacific}, nil
 }
 
 // Reserve commits cost units against today's budget and reports whether
@@ -102,7 +107,7 @@ func (b *DailyBudget) Reserve(cost int) (bool, time.Duration) {
 	now := time.Now()
 	if !now.Before(b.resetAt) {
 		b.used = 0
-		b.resetAt = nextPacificMidnight(now)
+		b.resetAt = nextPacificMidnight(now, b.pacific)
 	}
 	if b.used+cost > b.limit {
 		return false, b.resetAt.Sub(now)
@@ -111,11 +116,7 @@ func (b *DailyBudget) Reserve(cost int) (bool, time.Duration) {
 	return true, 0
 }
 
-func nextPacificMidnight(t time.Time) time.Time {
-	loc, err := time.LoadLocation("America/Los_Angeles")
-	if err != nil {
-		loc = time.UTC
-	}
+func nextPacificMidnight(t time.Time, loc *time.Location) time.Time {
 	pt := t.In(loc)
 	return time.Date(pt.Year(), pt.Month(), pt.Day()+1, 0, 0, 0, 0, loc)
 }

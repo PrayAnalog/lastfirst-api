@@ -45,13 +45,17 @@ type Server struct {
 	budget    *ratelimit.DailyBudget
 }
 
-func New(yt *youtube.Client, staticDir string) *Server {
+func New(yt *youtube.Client, staticDir string) (*Server, error) {
+	budget, err := ratelimit.NewDailyBudget(dailyQuotaBudget)
+	if err != nil {
+		return nil, err
+	}
 	return &Server{
 		yt:        yt,
 		staticDir: staticDir,
 		ipLimiter: ratelimit.NewIPLimiter(ipBurst, ipRefill),
-		budget:    ratelimit.NewDailyBudget(dailyQuotaBudget),
-	}
+		budget:    budget,
+	}, nil
 }
 
 func (s *Server) Handler() http.Handler {
