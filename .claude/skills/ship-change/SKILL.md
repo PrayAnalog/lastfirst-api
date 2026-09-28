@@ -57,7 +57,8 @@ shutdown. For any other change, run `git diff --check`.
 
 ## 4. Pre-PR gate
 
-1. Commit. Every review below covers `git diff <base>...HEAD`.
+1. Commit. Every review below covers `git diff origin/<base>...HEAD`: a
+   local `<base>`, checked out in another worktree, can lag behind it.
 2. Work through `.agents/pre-pr-checklist.md`, then run `/code-review` and the
    OCR review in `.agents/ocr-review.md`. Fix what they find, or note why not.
    For lifecycle and error-path changes, list each branch the diff adds or
@@ -80,16 +81,17 @@ First decide whether the change needs a diagram:
 .claude/skills/ship-change/needs-diagram.sh <base>
 ```
 
-It reads `git diff --name-only --no-renames <base>...HEAD` and sets aside
-tests, documentation and process files (`_test.go`, `*.md`, `.claude/`,
-`.agents/`). It prints `skip` when nothing is left, or when every file left is
+It reads `git diff --name-only --no-renames origin/<base>...HEAD`, or the
+local `<base>` when there is no `origin/<base>`, and sets aside tests,
+documentation and process files (`_test.go`, `*.md`, `.claude/`, `.agents/`).
+It prints `skip` when nothing is left, or when every file left is
 in one directory and none is `Dockerfile` or under `deploy/` or
 `.github/workflows/`, and `draw` otherwise: files left in more than one
 directory cross a boundary the diagram shows, however few they are. On
 `skip`, pass `open-pr.sh` no diagrams.
 
 Otherwise draw the change with the `pr-lens` skill (`.claude/skills/pr-lens`):
-write `.pr-lens/graph.json` from `git diff --find-renames <base>...HEAD`,
+write `.pr-lens/graph.json` from `git diff --find-renames origin/<base>...HEAD`,
 validate it, and render it in the light theme. Run the CLI only through
 `.claude/skills/ship-change/pr-lens.sh`, which pins its version: where the
 skill writes `npx @coldtea/pr-lens-cli@latest validate …`, run
