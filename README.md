@@ -86,6 +86,9 @@ whose notes list the pull requests merged since the previous tag.
 It then comments on each open issue that a pull request in the release
 references with a line that starts with `Refs #<n>`, and labels it
 `pending-verify`; close the issue once the change is verified in production.
+Merging such a pull request into `main` labels the issue `pending-deploy`;
+the release removes that label unless a pull request merged after the tag
+still references the issue.
 
 Use a tag that does not already exist in GHCR:
 pushing an existing tag overwrites the image it names.

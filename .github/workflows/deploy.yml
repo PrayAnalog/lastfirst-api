@@ -54,21 +54,37 @@ jobs:
         shell: bash
         run: |
           shopt -s inherit_errexit
+          merged_prs() {
+            gh api --paginate "repos/$GH_REPO/compare/$1?per_page=100" --jq '.commits[].sha' |
+              while read -r sha; do
+                gh api "repos/$GH_REPO/commits/$sha/pulls" --jq '.[] | select(.merged_at != null and .base.ref == "main") | .number'
+              done | sort -un
+          }
+          refs() {
+            local body
+            body=$(gh api "repos/$GH_REPO/pulls/$1" --jq '.body // ""')
+            sed -nE 's/^Refs #([0-9]+).*/\1/p' <<<"$body" | sort -un
+          }
           prev=$(gh release list --exclude-drafts --exclude-pre-releases --json tagName --jq 'map(.tagName) | .[(index(env.TAG) // -1) + 1]')
           gh release view "$TAG" --json tagName >/dev/null || gh release create "$TAG" --verify-tag --generate-notes
           [ -n "$prev" ] || exit 0
-          prs=$(gh api --paginate "repos/$GH_REPO/compare/$prev...$TAG?per_page=100" --jq '.commits[].sha' |
-            while read -r sha; do
-              gh api "repos/$GH_REPO/commits/$sha/pulls" --jq '.[] | select(.merged_at != null and .base.ref == "main") | .number'
-            done | sort -un)
-          declare -A deployed
+          declare -A deployed undeployed
+          prs=$(merged_prs "$prev...$TAG")
           for pr in $prs; do
-            body=$(gh api "repos/$GH_REPO/pulls/$pr" --jq '.body // ""')
-            for issue in $(grep -oE '^Refs #[0-9]+' <<<"$body" | grep -oE '[0-9]+' | sort -un); do
+            issues=$(refs "$pr")
+            for issue in $issues; do
               deployed[$issue]+=" #$pr"
             done
           done
+          prs=$(merged_prs "$TAG...main")
+          for pr in $prs; do
+            issues=$(refs "$pr")
+            for issue in $issues; do
+              undeployed[$issue]=1
+            done
+          done
           gh label create pending-verify --color FBCA04 --description "Deployed; close after verifying in production" --force
+          gh label create pending-deploy --color C5DEF5 --description "Merged; not deployed yet" --force
           err=$(mktemp)
           for issue in "${!deployed[@]}"; do
             if ! open=$(gh api "repos/$GH_REPO/issues/$issue" --jq 'select(.pull_request == null and .state == "open") | .number' 2>"$err"); then
@@ -79,5 +95,9 @@ jobs:
             body="Deployed in $TAG by${deployed[$issue]}. Close this issue once the change is verified in production."
             posted=$(BODY="$body" gh api --paginate "repos/$GH_REPO/issues/$issue/comments" --jq '.[] | select(.body == env.BODY) | .id')
             [ -n "$posted" ] || gh issue comment "$issue" --body "$body"
-            gh issue edit "$issue" --add-label pending-verify
+            if [ -n "${undeployed[$issue]-}" ]; then
+              gh issue edit "$issue" --add-label pending-verify
+            else
+              gh issue edit "$issue" --add-label pending-verify --remove-label pending-deploy
+            fi
           done
