@@ -28,6 +28,12 @@ with source/reverse playlist titles and item counts. A request body over
 8 KiB is rejected with `413`, and a body with a second JSON value or other
 non-whitespace data after the object with `400`.
 
+Every response, API and static files alike, carries `Content-Security-Policy`,
+`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy` and
+`Permissions-Policy` headers. The policy allows scripts only from this origin
+and images only from this origin and `i.ytimg.com`, so the frontend must not
+use inline scripts.
+
 ## Configuration
 
 | Env var | Default | Description |
