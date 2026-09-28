@@ -1,0 +1,31 @@
+name: Pending deploy
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+jobs:
+  label:
+    if: github.event.pull_request.merged
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          BODY: ${{ github.event.pull_request.body }}
+        shell: bash
+        run: |
+          shopt -s inherit_errexit
+          issues=$(sed -nE 's/^Refs #([0-9]+).*/\1/p' <<<"$BODY" | sort -un)
+          [ -n "$issues" ] || exit 0
+          gh label create pending-deploy --color C5DEF5 --description "Merged; not deployed yet" --force
+          err=$(mktemp)
+          for issue in $issues; do
+            if ! open=$(gh api "repos/$GH_REPO/issues/$issue" --jq 'select(.pull_request == null and .state == "open") | .number' 2>"$err"); then
+              grep -qE 'HTTP (404|410)' "$err" || { cat "$err" >&2; exit 1; }
+              continue
+            fi
+            [ -n "$open" ] || continue
+            gh issue edit "$issue" --add-label pending-deploy
+          done
