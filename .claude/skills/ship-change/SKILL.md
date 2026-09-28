@@ -97,9 +97,11 @@ directory cross a boundary the diagram shows, however few they are. On
 
 Otherwise draw the change with the `pr-lens` skill (`.claude/skills/pr-lens`):
 write `.pr-lens/graph.json` from `git diff --find-renames <base>...HEAD`,
-validate it, and render it in the light theme. Run the CLI as
-`npx @coldtea/pr-lens-cli@0.7.0` wherever the skill writes `@latest`, and
-change that version only in the same PR that updates the vendored skill.
+validate it, and render it in the light theme. Run the CLI only through
+`.claude/skills/ship-change/pr-lens.sh`, which pins its version: where the
+skill writes `npx @coldtea/pr-lens-cli@latest validate …`, run
+`.claude/skills/ship-change/pr-lens.sh validate …`. Change that version only in
+the same PR that updates the vendored skill.
 Attaching needs GitHub CLI 2.99 or later; check `gh --version`.
 
 When the diff changes at most five files other than `_test.go` files, draw
