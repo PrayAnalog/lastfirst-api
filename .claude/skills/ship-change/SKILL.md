@@ -57,8 +57,10 @@ shutdown. For any other change, run `git diff --check`.
 
 ## 4. Pre-PR gate
 
-1. Commit. Every review below covers `git diff origin/<base>...HEAD`: a
-   local `<base>`, checked out in another worktree, can lag behind it.
+1. Commit, and run `git fetch origin <base>`. Every review below, and the
+   diagram in section 5, covers `git diff origin/<base>...HEAD`: a local
+   `<base>`, checked out in another worktree, can lag behind it. A stacked
+   PR's base is a pushed branch, so the fetch finds it too.
 2. Work through `.agents/pre-pr-checklist.md`, then run `/code-review` and the
    OCR review in `.agents/ocr-review.md`. Fix what they find, or note why not.
    For lifecycle and error-path changes, list each branch the diff adds or
