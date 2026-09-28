@@ -1,23 +1,30 @@
 name: Pending deploy
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [main]
 jobs:
   label:
-    if: github.event.pull_request.merged
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       issues: write
+      pull-requests: read
     steps:
       - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          BODY: ${{ github.event.pull_request.body }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
         shell: bash
         run: |
           shopt -s inherit_errexit
-          issues=$(sed -nE 's/^Refs #([0-9]+).*/\1/p' <<<"$BODY" | sort -un)
+          prs=$(gh api --paginate "repos/$GH_REPO/compare/$BEFORE...$AFTER?per_page=100" --jq '.commits[].sha' |
+            while read -r sha; do
+              gh api "repos/$GH_REPO/commits/$sha/pulls" --jq '.[] | select(.merged_at != null and .base.ref == "main") | .number'
+            done | sort -un)
+          issues=$(for pr in $prs; do
+              gh api "repos/$GH_REPO/pulls/$pr" --jq '.body // ""' | sed -nE 's/^Refs #([0-9]+).*/\1/p'
+            done | sort -un)
           [ -n "$issues" ] || exit 0
           gh label create pending-deploy --color C5DEF5 --description "Merged; not deployed yet" --force
           err=$(mktemp)
