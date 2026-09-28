@@ -160,7 +160,22 @@ them through the Docker API can also inspect containers, and inspect
 returns their environment, `YT_API_KEY` included. #110, #111 and #112 each
 drew a review round for one of these.
 
-## 11. Answer each review round in the thread
+## 11. Run a job that writes after a merge on push to main
+
+Applies to `.github/workflows/`.
+
+By default a `pull_request` run for a pull request from a fork gets a
+read-only `GITHUB_TOKEN`, so a job that writes (labels, comments, releases)
+fails when such a pull request is merged. Do not move that job to
+`pull_request_target`: GitHub blocks it by default in public repositories
+without an event policy that allows it, enforced from 2026-11-02, and this
+repository does not define such a policy. Run a job that writes after a merge on `push`
+to `main`, and look up the merged pull request behind each pushed commit
+with `commits/<sha>/pulls`, as `merged_prs` in `deploy.yml` does for a tag. Take event fields
+only through `env:`, never through `${{ }}` inside `run:`. #143 and #151
+each drew a review round for this.
+
+## 12. Answer each review round in the thread
 
 Sort the findings as `ship-change` step 6 does: ask before a fix that needs new
 state, permissions or triggers, decline accepted risks with the sequence they
