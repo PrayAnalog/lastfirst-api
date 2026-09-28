@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
+	_ "time/tzdata"
 
 	"ytreverse/internal/httpapi"
 	"ytreverse/internal/youtube"
@@ -304,6 +306,11 @@ func TestCreatePlaylistStopsAtDailyBudget(t *testing.T) {
 	fake := &fakeYouTube{playlists: map[string]fakePlaylist{
 		"PLmax": {title: "max", itemCount: len(items), items: items},
 	}}
+	pacific, err := time.LoadLocation("America/Los_Angeles")
+	if err != nil {
+		t.Fatal(err)
+	}
+	day := time.Now().In(pacific).Format(time.DateOnly)
 	h := newIntegrationHandler(t, fake)
 
 	for i := range 195 {
@@ -313,6 +320,9 @@ func TestCreatePlaylistStopsAtDailyBudget(t *testing.T) {
 		}
 	}
 	code, got := postPlaylist(t, h, "192.0.2.200", `{"input":"PLmax"}`)
+	if time.Now().In(pacific).Format(time.DateOnly) != day {
+		t.Skip("crossed midnight Pacific Time, when the daily budget resets")
+	}
 	if code != http.StatusTooManyRequests || got["error"] != "daily API quota exhausted, try again after quota resets at midnight Pacific Time" {
 		t.Errorf("196th request: status = %d, error %v; want %d quota error", code, got["error"], http.StatusTooManyRequests)
 	}
