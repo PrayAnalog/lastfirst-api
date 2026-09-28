@@ -81,13 +81,19 @@ shutdown. For any other change, run `git diff --check`.
 
 ## 5. Open the PR
 
-First decide from `git diff --name-only --no-renames <base>...HEAD` whether
-the change needs a diagram. Set aside tests, documentation and process files
-(`_test.go`, `*.md`, `.claude/`, `.agents/`). Skip the diagram, and pass
-`open-pr.sh` no diagrams, when nothing is left, or when every file left is in
-one directory and none is `Dockerfile` or under `deploy/` or
-`.github/workflows/`. Files left in more than one directory cross a
-boundary the diagram shows, however few they are.
+First decide whether the change needs a diagram:
+
+```bash
+.claude/skills/ship-change/needs-diagram.sh <base>
+```
+
+It reads `git diff --name-only --no-renames <base>...HEAD` and sets aside
+tests, documentation and process files (`_test.go`, `*.md`, `.claude/`,
+`.agents/`). It prints `skip` when nothing is left, or when every file left is
+in one directory and none is `Dockerfile` or under `deploy/` or
+`.github/workflows/`, and `draw` otherwise: files left in more than one
+directory cross a boundary the diagram shows, however few they are. On
+`skip`, pass `open-pr.sh` no diagrams.
 
 Otherwise draw the change with the `pr-lens` skill (`.claude/skills/pr-lens`):
 write `.pr-lens/graph.json` from `git diff --find-renames <base>...HEAD`,
