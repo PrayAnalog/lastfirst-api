@@ -65,7 +65,7 @@ jobs:
             body=$(gh api "repos/$GH_REPO/pulls/$1" --jq '.body // ""')
             sed -nE 's/^Refs #([0-9]+).*/\1/p' <<<"$body" | sort -un
           }
-          prev=$({ gh release list --exclude-drafts --exclude-pre-releases --json tagName --jq '.[].tagName | select(. != env.TAG)'; echo "$TAG"; } |
+          prev=$({ gh release list --limit 10000 --exclude-drafts --exclude-pre-releases --json tagName --jq '.[].tagName | select(. != env.TAG)'; echo "$TAG"; } |
             sort -V | awk -v tag="$TAG" '$0 == tag { print p } { p = $0 }')
           gh release view "$TAG" --json tagName >/dev/null || gh release create "$TAG" --verify-tag --generate-notes
           [ -n "$prev" ] || exit 0
