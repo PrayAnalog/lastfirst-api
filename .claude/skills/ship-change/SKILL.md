@@ -18,18 +18,11 @@ List the behaviors the request names. Each one that could be reverted on its
 own is its own change, its own branch and its own PR. Write the list down with
 a branch name for each (`fix/…`, `feat/…`, `chore/…`) before editing anything.
 
-A change whose bounds are derived from another change's bounds — a shutdown
-deadline written over a write timeout, a grace period written over a shutdown
-deadline — is *stacked*: branch it from the parent's branch and open its PR
-with `--base <parent-branch>`. Every other change branches from `origin/main`.
-Do not bundle coupled changes into one PR to avoid stacking.
-
-Every PR in a stack has to be safe to merge without the ones above it: merged
-alone, it must not break or worsen a production invariant `AGENTS.md` declares,
-in **Scope** or **Production boundaries**. When a PR is unsafe without one
-piece of a PR above it, move just that piece down into it rather than folding
-the whole stack into one PR. This covers what the diff changes, not debt that
-was already there.
+Section 0 of `.agents/pre-pr-checklist.md` says which changes are *stacked*
+and what each PR in a stack must be safe to do. Branch a stacked change from
+its parent's branch and open its PR with `--base <parent-branch>`. Every other
+change branches from `origin/main`. Do not bundle coupled changes into one PR
+to avoid stacking.
 
 `main` is checked out in another worktree, so `git switch -c <branch>
 origin/main`; never `git checkout main`.

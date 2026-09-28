@@ -11,11 +11,17 @@ and move on.
 Describe the diff in one sentence. If the sentence needs "and" to cover two
 behaviors that could be reverted separately, split the branch: with several
 such behaviors in one PR, every fix to one of them reopens review of all the
-others. A change whose bounds are written over another change's bounds is
-stacked on that change's branch rather than folded into it. Merged without the
-PRs stacked above it, this diff must not break or worsen a production invariant
-`AGENTS.md` declares; if it needs one piece of a PR above it, move just that
-piece down into this one.
+others.
+
+A change whose bounds are derived from another change's bounds — a shutdown
+deadline written over a write timeout, a grace period written over a shutdown
+deadline — is *stacked* on that change's branch rather than folded into it.
+Every PR in a stack has to be safe to merge without the ones above it: merged
+alone, it must not break or worsen a production invariant `AGENTS.md` declares,
+in **Scope** or **Production boundaries**. When it is unsafe without one piece
+of a PR above it, move just that piece down into it rather than folding the
+whole stack into one PR. This covers what the diff changes, not debt that was
+already there.
 
 ## 1. Walk the named behavior as an event sequence
 
