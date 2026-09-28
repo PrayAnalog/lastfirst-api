@@ -35,6 +35,10 @@ Every response, API and static files alike, carries `Content-Security-Policy`,
 and images only from this origin and `i.ytimg.com`, so the frontend must not
 use inline scripts.
 
+A client over the per-IP rate limit gets `429 Too Many Requests` with a
+`Retry-After` header giving the whole seconds until its next request is
+accepted.
+
 ## Configuration
 
 | Env var | Default | Description |

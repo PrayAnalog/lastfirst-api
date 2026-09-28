@@ -34,7 +34,7 @@ func NewIPLimiter(burst int, refill time.Duration) *IPLimiter {
 	return l
 }
 
-func (l *IPLimiter) Allow(ip string) bool {
+func (l *IPLimiter) Allow(ip string) (bool, time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -47,7 +47,7 @@ func (l *IPLimiter) Allow(ip string) bool {
 			l.order.Remove(oldest)
 		}
 		l.buckets[ip] = &bucket{tokens: l.burst - 1, lastSeen: now, elem: l.order.PushBack(ip)}
-		return true
+		return true, 0
 	}
 
 	if refilled := int(now.Sub(b.lastSeen) / l.refill); refilled > 0 {
@@ -56,10 +56,10 @@ func (l *IPLimiter) Allow(ip string) bool {
 		l.order.MoveToBack(b.elem)
 	}
 	if b.tokens <= 0 {
-		return false
+		return false, b.lastSeen.Add(l.refill).Sub(now)
 	}
 	b.tokens--
-	return true
+	return true, 0
 }
 
 // cleanupLoop drops buckets that have been idle long enough to be full

@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -92,7 +93,8 @@ type playlistView struct {
 }
 
 func (s *Server) createPlaylist(w http.ResponseWriter, r *http.Request) {
-	if !s.ipLimiter.Allow(clientIP(r)) {
+	if ok, wait := s.ipLimiter.Allow(clientIP(r)); !ok {
+		w.Header().Set("Retry-After", strconv.Itoa(int((wait+time.Second-1)/time.Second)))
 		writeError(w, http.StatusTooManyRequests, "too many requests, please slow down and try again shortly")
 		return
 	}

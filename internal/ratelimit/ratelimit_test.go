@@ -9,7 +9,7 @@ import (
 func TestIPLimiterBoundsDistinctIPs(t *testing.T) {
 	l := NewIPLimiter(5, time.Minute)
 	for i := range 20000 {
-		if !l.Allow("ip-" + strconv.Itoa(i)) {
+		if ok, _ := l.Allow("ip-" + strconv.Itoa(i)); !ok {
 			t.Fatalf("first request from new IP %d was denied", i)
 		}
 	}
