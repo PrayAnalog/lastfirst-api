@@ -54,8 +54,8 @@ jobs:
         shell: bash
         run: |
           shopt -s inherit_errexit
-          prev=$(gh release view --json tagName --jq .tagName)
-          gh release create "$TAG" --verify-tag --generate-notes
+          prev=$(gh release list --exclude-drafts --exclude-pre-releases --json tagName --jq 'map(select(.tagName != env.TAG))[0].tagName')
+          gh release view "$TAG" --json tagName >/dev/null || gh release create "$TAG" --verify-tag --generate-notes
           prs=$(gh api --paginate "repos/$GH_REPO/compare/$prev...$TAG?per_page=100" --jq '.commits[].sha' |
             while read -r sha; do
               gh api "repos/$GH_REPO/commits/$sha/pulls" --jq '.[] | select(.merged_at != null and .base.ref == "main") | .number'
@@ -67,9 +67,16 @@ jobs:
               deployed[$issue]+=" #$pr"
             done
           done
+          gh label create pending-verify --color FBCA04 --description "Deployed; close after verifying in production" --force
+          err=$(mktemp)
           for issue in "${!deployed[@]}"; do
-            open=$(gh api "repos/$GH_REPO/issues/$issue" --jq 'select(.pull_request == null and .state == "open") | .number')
+            if ! open=$(gh api "repos/$GH_REPO/issues/$issue" --jq 'select(.pull_request == null and .state == "open") | .number' 2>"$err"); then
+              grep -qE 'HTTP (404|410)' "$err" || { cat "$err" >&2; exit 1; }
+              continue
+            fi
             [ -n "$open" ] || continue
-            gh issue comment "$issue" --body "Deployed in $TAG by${deployed[$issue]}. Close this issue once the change is verified in production."
+            body="Deployed in $TAG by${deployed[$issue]}. Close this issue once the change is verified in production."
+            posted=$(BODY="$body" gh api --paginate "repos/$GH_REPO/issues/$issue/comments" --jq '.[] | select(.body == env.BODY) | .id')
+            [ -n "$posted" ] || gh issue comment "$issue" --body "$body"
             gh issue edit "$issue" --add-label pending-verify
           done
