@@ -56,8 +56,11 @@ func TestCaddyBodyLimitMatchesApp(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := fmt.Sprintf("max_size %dKiB", maxRequestBody>>10)
-	if !strings.Contains(string(caddyfile), want) {
-		t.Errorf("Caddyfile does not contain %q", want)
+	want := fmt.Sprintf("max_size %d", maxRequestBody)
+	for _, line := range strings.Split(string(caddyfile), "\n") {
+		if strings.TrimSpace(line) == want {
+			return
+		}
 	}
+	t.Errorf("Caddyfile has no line %q", want)
 }

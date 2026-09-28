@@ -3,7 +3,7 @@ lastfirst.app {
 		format json
 	}
 	request_body {
-		max_size 8KiB
+		max_size 8192
 	}
 	reverse_proxy app:8080 {
 		lb_try_duration 30s
