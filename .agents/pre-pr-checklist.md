@@ -171,7 +171,7 @@ fails when such a pull request is merged. Do not move that job to
 without an event policy that allows it, enforced from 2026-11-02, and this
 repository does not define such a policy. Run a job that writes after a merge on `push`
 to `main`, and look up the merged pull request behind each pushed commit
-with `commits/<sha>/pulls`, as `pending-deploy.yml` does. Take event fields
+with `commits/<sha>/pulls`, as `merged_prs` in `deploy.yml` does for a tag. Take event fields
 only through `env:`, never through `${{ }}` inside `run:`. #143 and #151
 each drew a review round for this.
 
