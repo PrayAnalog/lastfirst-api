@@ -10,6 +10,7 @@ set -eo pipefail
 git fetch origin --tags --quiet
 prev=$(gh release list --limit 10000 --exclude-drafts --exclude-pre-releases --json tagName --jq '.[].tagName' |
   sed 's/-/~/' | sort -V | sed 's/~/-/' | tail -n 1)
+[ -n "$prev" ] || { echo "no GitHub Release found to start the range from" >&2; exit 1; }
 head=$(git rev-parse origin/main)
 range="$prev..$head"
 
