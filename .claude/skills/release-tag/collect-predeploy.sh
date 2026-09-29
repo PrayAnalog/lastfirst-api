@@ -22,7 +22,7 @@ git diff --name-status "$range" -- deploy/ | sed 's/^/  /'
 shas=$(gh api --paginate "repos/{owner}/{repo}/compare/$prev...$head?per_page=100" --jq '.commits[].sha')
 prs=
 for sha in $shas; do
-  prs+=$'\n'$(gh api "repos/{owner}/{repo}/commits/$sha/pulls" --jq '.[] | select(.merged_at != null and .base.ref == "main") | .number')
+  prs+=$'\n'$(gh api --paginate "repos/{owner}/{repo}/commits/$sha/pulls" --jq '.[] | select(.merged_at != null and .base.ref == "main") | .number')
 done
 prs=$(sort -un <<<"$prs")
 echo "pull requests: $(echo $prs)"
