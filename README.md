@@ -75,10 +75,13 @@ Pushing a `v*` tag runs
 and pushes `ghcr.io/prayanalog/lastfirst:<tag>`, with the `main` branch of
 `PrayAnalog/lastfirst-web` as the frontend, then connects to the droplet over
 SSH with a key restricted to a single deploy command, which rolls the app
-container to that tag:
+container to that tag. Before tagging, run
+`.claude/skills/release-tag/collect-predeploy.sh` and finish the prerequisites
+and manual `deploy/` changes it lists, then tag the commit it printed. Run the
+commands that verify production only after the deploy succeeds:
 
 ```bash
-git fetch origin main && git tag <tag> origin/main && git push origin <tag>
+git tag <tag> <sha> && git push origin <tag>
 ```
 
 Once the deploy succeeds, the workflow publishes a GitHub Release for the tag

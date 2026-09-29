@@ -17,5 +17,8 @@
   preview` command, plus `delegate rule` when the preview lists reviewable
   files, have produced output in the same turn, including for a one-line
   review fix: the stamp records that a review ran, it does not run one.
+- For any request to create a tag or deploy, follow
+  `.claude/skills/release-tag/SKILL.md` before running `git tag`: it shows every
+  pull request's pre-deploy checks once, in order, and waits for the user.
 - When reusing code from a closed PR, re-check it against the current
   checklist; a closed PR's code is unreviewed input, not a verified pattern.
