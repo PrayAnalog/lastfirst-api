@@ -76,8 +76,9 @@ and pushes `ghcr.io/prayanalog/lastfirst:<tag>`, with the `main` branch of
 `PrayAnalog/lastfirst-web` as the frontend, then connects to the droplet over
 SSH with a key restricted to a single deploy command, which rolls the app
 container to that tag. Before tagging, run
-`.claude/skills/release-tag/collect-predeploy.sh` and finish the pre-deploy
-checks it lists, then tag the commit it printed:
+`.claude/skills/release-tag/collect-predeploy.sh` and finish the prerequisites
+and manual `deploy/` changes it lists, then tag the commit it printed. Run the
+commands that verify production only after the deploy succeeds:
 
 ```bash
 git tag <tag> <sha> && git push origin <tag>
