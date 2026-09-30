@@ -18,8 +18,8 @@ if [ "$(tail -n 1 <<<"$report")" != "verdict: quiet" ]; then
   exit 1
 fi
 
-checks=$(gh pr checks "$pr") || {
-  printf '%s\n' "$checks"
+checks=$(gh pr checks "$pr" 2>&1) || {
+  printf 'merge-pr: checks of #%s did not all pass:\n%s\n' "$pr" "$checks" >&2
   exit 1
 }
 
