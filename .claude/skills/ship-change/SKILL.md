@@ -217,7 +217,10 @@ Findings posted only in a review body ("Outside diff range comments" or
 "Outside the diff") get a PR comment instead. Thread replies are written in
 Korean, matching CodeRabbit's configured language.
 
-Push, update the PR body if the approach changed, and wait again. Stop when
+Push with `.claude/skills/ship-change/push-and-check.sh <pr>`, which pushes
+and prints the `review-state.sh` report for the new head (use a plain
+`git push --force-with-lease` after a rebase). Update the PR body if the
+approach changed, and wait again. Stop when
 the script prints `verdict: quiet`, or when the user decides to stop at one of
 the questions above. `verdict: unapproved` means every
 thread is answered but CodeRabbit has not approved; read its latest review
