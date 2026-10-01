@@ -253,3 +253,14 @@ already name, add it there in a separate `chore/` PR, citing the PR it came
 from. The next change should not draw the same finding.
 
 Do not merge. Report each PR's URL and verdict.
+
+When the user asks to merge a PR, run this from the worktree that pushed its
+head, with the head commit you reviewed:
+
+```bash
+.claude/skills/ship-change/merge-pr.sh <pr> <head-sha>
+```
+
+It squash-merges only when `review-state.sh` reports `verdict: quiet`, every
+check passes and the merge state is `CLEAN`; otherwise it prints what stopped
+it and merges nothing.
