@@ -6,7 +6,7 @@
 # Runs the local Codex review at low and high reasoning effort and keeps a
 # log under the git common directory, shared by every worktree of this clone,
 # so the two efforts can be compared once enough pull requests are merged.
-set -u
+set -uo pipefail
 
 dir="$(git rev-parse --path-format=absolute --git-common-dir)/codex-effort" || exit 1
 mkdir -p "$dir" || exit 1
@@ -20,7 +20,7 @@ review)
   branch=$(git rev-parse --abbrev-ref HEAD) || exit 1
   files=$(git diff --name-only --no-renames "origin/$base...HEAD") || exit 1
   code=false
-  printf '%s\n' "$files" | grep -Ev '(\.md$|^\.claude/|^\.agents/)' | grep -q . && code=true
+  [ -n "$(printf '%s\n' "$files" | grep -Ev '(\.md$|^\.claude/|^\.agents/)')" ] && code=true
 
   for e in "${efforts[@]}"; do
     (
@@ -61,14 +61,16 @@ finding)
 report)
   reviewed=$(jq -r 'select(.code) | .branch' "$dir/runs.jsonl" | LC_ALL=C sort -u) || exit 1
   merged=$(gh pr list --state merged --limit 1000 --json headRefName --jq '.[].headRefName' | LC_ALL=C sort -u) || exit 1
-  n=$(LC_ALL=C comm -12 <(printf '%s\n' "$reviewed") <(printf '%s\n' "$merged") | grep -c .)
+  selected=$(LC_ALL=C comm -12 <(printf '%s\n' "$reviewed") <(printf '%s\n' "$merged") | grep .)
+  n=$(printf '%s' "$selected" | grep -c .)
   echo "merged code PRs reviewed at both efforts: $n/$target"
   [ "$n" -ge "$target" ] || exit 0
-  jq -s 'group_by(.effort) | map({effort: .[0].effort, runs: length,
+  branches=$(printf '%s\n' "$selected" | jq -Rsc 'split("\n") | map(select(. != ""))') || exit 1
+  jq -s --argjson b "$branches" 'map(select(.code and (.branch | IN($b[])))) | group_by(.effort) | map({effort: .[0].effort, runs: length,
     failed: map(select(.exit != 0)) | length,
     mean_seconds: (map(.seconds) | add / length)})' "$dir/runs.jsonl" || exit 1
   if [ -f "$dir/findings.jsonl" ]; then
-    jq -s 'group_by([.raised, .outcome]) | map({raised: .[0].raised,
+    jq -s --argjson b "$branches" 'map(select(.branch | IN($b[]))) | group_by([.raised, .outcome]) | map({raised: .[0].raised,
       outcome: .[0].outcome, count: length})' "$dir/findings.jsonl" || exit 1
   else
     echo "no findings recorded"
