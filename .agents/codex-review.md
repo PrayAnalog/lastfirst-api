@@ -22,10 +22,9 @@ both runs under `codex-effort/` in the git common directory. It prints the
 path of a run's transcript only when that run exits non-zero; read it then.
 
 `<base>` is the base the PR will be opened against, as in the other two
-reviews. The Codex plugin's `/codex:review --base <base>` runs one such review, at the effort in
-`~/.codex/config.toml`,
-for a person typing it; it is marked `disable-model-invocation`, so a session
-runs the CLI instead.
+reviews. The Codex plugin's `/codex:review --base <base>` runs one such
+review, at the effort in `~/.codex/config.toml`, for a person typing it; it is
+marked `disable-model-invocation`, so a session runs the script instead.
 
 When `codex` is missing or not signed in, stop and tell the user: install it
 with `npm install -g @openai/codex` and sign in with `codex login`. When the
