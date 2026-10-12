@@ -21,7 +21,7 @@ stamp=$(review_stamp "$sha" "$gitdir" "$base") || {
   exit 1
 }
 if [ ! -f "$stamp" ]; then
-  echo "open-pr: no review of this diff against $base is recorded. Work through .agents/pre-pr-checklist.md, run /code-review and the OCR review in .agents/ocr-review.md, then run .claude/skills/ship-change/record-review.sh $(printf '%q' "$base") as a command of its own." >&2
+  echo "open-pr: no review of this diff against $base is recorded. Work through .agents/pre-pr-checklist.md, run /code-review, the OCR review in .agents/ocr-review.md and the Codex review in .agents/codex-review.md, then run .claude/skills/ship-change/record-review.sh $(printf '%q' "$base") as a command of its own." >&2
   exit 1
 fi
 
