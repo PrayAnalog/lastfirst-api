@@ -1,11 +1,11 @@
 ---
 name: ship-change
-description: Takes an implementation request in lastfirst-api from requirement to a pull request with no actionable review-bot findings left — splits it into one PR per change, implements each on its own branch from origin/main, passes the pre-PR checklist, /code-review, the OCR review and the Codex review, opens the PR, then repeats review rounds until every CodeRabbit and Codex finding is fixed or declined with evidence. Use for any request here to implement, fix, harden or change behavior ("구현해", "고쳐", "PR 올려"), even when the request does not mention review, branches or PRs.
+description: Takes an implementation request in lastfirst-api from requirement to a pull request with no actionable review-bot findings left — splits it into one PR per change, implements each on its own branch from origin/main, passes the pre-PR checklist, /code-review, the OCR review and the Codex review, opens the PR, then repeats review rounds until every cubic and Codex finding is fixed or declined with evidence. Use for any request here to implement, fix, harden or change behavior ("구현해", "고쳐", "PR 올려"), even when the request does not mention review, branches or PRs.
 ---
 
 # Ship a change
 
-In this repository a change is finished when no actionable CodeRabbit or Codex
+In this repository a change is finished when no actionable cubic or Codex
 finding remains on its PR and every other finding is declined with evidence,
 not when it compiles. A PR that bundles several requirements draws review
 rounds across all of them, because every fix in one area reopens review of the
@@ -33,7 +33,7 @@ origin/main`; never `git checkout main`.
   boundary it crosses (`deploy/`, `Dockerfile`, Caddy in front).
 - `go doc` for each library call the change depends on. Write from the doc,
   not from memory.
-- `.coderabbit.yaml` `path_instructions` and `AGENTS.md` **Production
+- `cubic.yaml` `custom_instructions` and `AGENTS.md` **Production
   boundaries** for the paths involved, and all of `.agents/code-review.md`.
   They are the rules the bots review against, so they are authoring rules
   here.
@@ -161,8 +161,7 @@ in the body or in a commit message: it closes the issue when the PR merges
 into `main`, before the change is deployed. The issue is closed
 after the change is verified in production.
 
-For a stacked PR, say which PR it builds on. CodeRabbit skips PRs whose base is
-not `main`; comment `@coderabbitai review` on those.
+For a stacked PR, say which PR it builds on.
 
 ## 6. Review rounds
 
@@ -216,25 +215,23 @@ gh api repos/PrayAnalog/lastfirst-api/pulls/<pr>/comments/<comment-id>/replies -
 
 Findings posted only in a review body ("Outside diff range comments" or
 "Outside the diff") get a PR comment instead. Thread replies are written in
-Korean, matching CodeRabbit's configured language.
+Korean, matching the review language `cubic.yaml` and `AGENTS.md` set.
 
 Push with `.claude/skills/ship-change/push-and-check.sh <pr>`, which pushes
 and prints the `review-state.sh` report for the new head (use a plain
 `git push --force-with-lease` after a rebase). Update the PR body if the
 approach changed, and wait again. Stop when
 the script prints `verdict: quiet`, or when the user decides to stop at one of
-the questions above. `verdict: unapproved` means every
-thread is answered but CodeRabbit has not approved; read its latest review
-body, its summary comment and every thread marked `bot-replied` before
-deciding whether anything is still open. `review-bodies.sh <pr>` prints all
-three in one call:
+the questions above. Before treating `verdict: quiet` as done, read every
+cubic and CodeRabbit review body, CodeRabbit's summary comment and every
+thread marked `bot-replied`. `review-bodies.sh <pr>` prints them in one call:
 
 ```bash
 .claude/skills/ship-change/review-bodies.sh <pr>
 ```
 
-It prints every CodeRabbit review body with its `<details>` blocks kept, the
-summary comment, and every review thread with all of its comments, marking
+It prints every cubic and CodeRabbit review body with its `<details>` blocks
+kept, the summary comment, and every review thread with all of its comments, marking
 the ones already resolved.
 
 `quiet` counts replies, not resolutions. Before reporting a PR as done, re-read
@@ -242,7 +239,7 @@ each finding against the code its reply points to and check that its failure
 scenario is gone, or that the reply gives repository evidence for declining it.
 The script finds outside-diff findings by their "Outside diff range comments"
 and "Outside the diff" headings, and CodeRabbit may word them otherwise,
-so read every CodeRabbit review body on the PR yourself, from the same
+so read every cubic and CodeRabbit review body on the PR yourself, from the same
 `review-bodies.sh` output as the threads. A bot that paused,
 skipped the PR or ran out of usage without reviewing the current head has not
 reviewed it: report it to the user as not run, never as clean.

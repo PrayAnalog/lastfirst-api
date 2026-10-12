@@ -13,14 +13,14 @@
 # review with a reaction on the PR rather than on a commit, so only the local
 # push time says which head that reaction is about. A clean-review comment that
 # names its commit needs no push time.
-#   verdict: unapproved  every thread is answered but CodeRabbit has not
-#                        approved this head; read its latest review body
-#                        and any thread marked bot-replied
-#   verdict: quiet       both bots are done with this head, CodeRabbit's
-#                        latest decision is an approval, and every open thread
-#                        has a reply from you somewhere, even if a bot replied
-#                        after it; whether a reply resolved its finding is not
-#                        checked
+#   verdict: quiet       both bots are done with this head and every open
+#                        thread has a reply from you somewhere, even if a bot
+#                        replied after it; whether a reply resolved its
+#                        finding is not checked
+#
+# The bots that must report are cubic and Codex. CodeRabbit no longer reviews
+# this repository on its own, so it is not waited for; its threads and
+# outside-diff findings still count when it does review.
 set -euo pipefail
 
 pr=${1:?usage: review-state.sh <pr-number>}
@@ -37,29 +37,39 @@ echo "head: ${head:0:7} (pushed ${pushed:-at an unknown time from this checkout}
 reported=1
 blocked=0
 
-# CodeRabbit does not always leave a review object on the head it covered: a
-# pass with nothing to add only updates its summary comment, whose
-# final_review_risk_coverage marker names the commit it reached.
-rabbit_head_review=$(gh api --paginate "repos/$repo/pulls/$pr/reviews" \
-  --jq ".[] | select(.user.login == \"coderabbitai[bot]\" and .commit_id == \"$head\") | .id")
-rabbit_verdict=$(gh api --paginate "repos/$repo/pulls/$pr/reviews" \
-  --jq ".[] | select(.user.login == \"coderabbitai[bot]\" and (.state == \"APPROVED\" or .state == \"CHANGES_REQUESTED\")) | .state" | tail -n 1)
-rabbit_summary=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
-  --jq '.[] | select(.user.login == "coderabbitai[bot]" and (.body | contains("summarize by coderabbit.ai"))) | .body')
-# The paused or skipped notice stays in the summary after a review is requested
-# again, so a request posted since the push means the bot is working, not
-# blocked.
-rabbit_asked=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
-  --jq ".[] | select(.user.login == \"$me\" and .created_at >= \"$pushed\" and (.body | test(\"^\\\\s*@coderabbitai (full review|review|resume)\\\\s*$\"))) | .id")
-if [ -n "$rabbit_head_review" ] || grep -q "\"coveredCommitId\":\"$head\"" <<<"$rabbit_summary"; then
-  echo "coderabbit: covered this head, latest decision on the PR: ${rabbit_verdict:-none}"
-elif grep -qE 'Reviews paused|Review skipped' <<<"$rabbit_summary" && [ -z "$rabbit_asked" ]; then
-  echo "coderabbit: paused or skipped; comment '@coderabbitai review' on the PR"
-  blocked=1
-else
-  echo "coderabbit: pending"
-  reported=0
-fi
+# cubic reports each review as a check run on the commit it reviewed: success
+# once the review is posted, neutral when it did not run, such as at a usage
+# limit, which it explains in a PR comment. That run stays the latest until a
+# requested review starts a new one, so a request posted after it finished
+# means the bot is working, not blocked.
+cubic=$(gh api "repos/$repo/commits/$head/check-runs?check_name=cubic%20%C2%B7%20AI%20code%20reviewer" \
+  --jq '[.check_runs[] | select(.app.slug == "cubic-dev-ai")][0] // empty | "\(.status) \(.conclusion) \(.completed_at)"')
+cubic_done_at=${cubic##* }
+cubic=${cubic% *}
+cubic_asked=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
+  --jq ".[] | select(.user.login == \"$me\" and .created_at > \"$cubic_done_at\" and (.body | test(\"^\\\\s*@cubic-dev-ai review\"))) | .id")
+case "$cubic" in
+  "completed success")
+    echo "cubic: reviewed this head"
+    ;;
+  completed*)
+    if [ -n "$cubic_asked" ]; then
+      echo "cubic: review requested after it did not run"
+      reported=0
+    else
+      echo "cubic: did not review this head (${cubic#completed }); read its latest PR comment, then comment '@cubic-dev-ai review' once it can run"
+      blocked=1
+    fi
+    ;;
+  "")
+    echo "cubic: pending; a PR opened before cubic was installed needs '@cubic-dev-ai review this PR'"
+    reported=0
+    ;;
+  *)
+    echo "cubic: pending"
+    reported=0
+    ;;
+esac
 
 # Findings outside the diff exist only in a review body, never as a thread, so
 # they stay open until a PR comment from you follows the review, whichever
@@ -162,8 +172,6 @@ elif [ "$blocked" = 1 ]; then
   echo "verdict: blocked"
 elif [ "$reported" = 0 ]; then
   echo "verdict: waiting"
-elif [ "$rabbit_verdict" != APPROVED ]; then
-  echo "verdict: unapproved"
 else
   echo "verdict: quiet"
 fi

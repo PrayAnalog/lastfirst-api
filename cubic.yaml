@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=https://cubic.dev/schema/cubic-repository-config.schema.json
+version: 1
+reviews:
+  ignore:
+    files:
+      - go.sum
+  custom_instructions: |
+    Write review comments and summaries in Korean.
+
+    For **/*.go:
+    Flag a dropped or swallowed error when ignoring it changes state, the
+    response, or resource cleanup, or hides a failure someone could act
+    on. Flag values used before their error is checked. Do not flag a failed write to a client that
+    has gone away, such as a health handler's w.Write.
+    Flag request-scoped work that does not propagate the incoming
+    context.Context.
+    Flag shared state mutated without synchronization.
+    Do not suggest adding comments, doc comments, or tests. Do not
+    suggest renaming for style alone. Do not report gofmt-level
+    formatting.
+
+    For internal/httpapi/**:
+    Flag handlers that can panic on malformed or missing input.
+    Flag responses that expose internal error text, stack traces, or the
+    YouTube API key to clients.
+    Flag quota accounting mistakes: a reservation retained when no
+    billable call was attempted, or an API call made before the budget is
+    reserved. Do not require releasing reservations for failed calls that
+    may already have been billed.
+
+    For internal/ratelimit/**:
+    This package is called concurrently from HTTP handlers. Flag any map
+    or counter access that is not guarded, and any limiter state that
+    grows without bound.
+
+    For deploy/**:
+    Production is Docker Compose on one droplet, with Caddy in front of
+    the app container.
+    Flag an app port published on the host: the app must be reachable
+    only through Caddy, because the per-IP limiter trusts the
+    X-Forwarded-For entry Caddy writes.
+    Flag Caddyfile settings that trust or rewrite incoming
+    X-Forwarded-For (trusted_proxies, header_up X-Forwarded-For).
+    Quota and rate-limit state is process-local: flag anything that can
+    run two app containers at once (scale, replicas, a second service on
+    the same image).
+    Flag secrets committed as literal values instead of ${VAR} references
+    resolved from the droplet's .env.
+
+    For .github/**:
+    This is development tooling, not production. Flag workflow
+    permissions wider than the job needs, secrets reachable by code from
+    fork pull requests, and conditions a fork pull request can control.
+    Do not flag races that need concurrent manual actions, or limits no
+    real change reaches. The Code Review workflow is one of three
+    reviewers, so a rare skip is an accepted risk once cubic and
+    Codex have both reviewed that head.
