@@ -97,7 +97,7 @@ if grep -Eq '^(cmd/|internal/|deploy/|Dockerfile$|go\.mod$)' <<<"$changed"; then
   greptile_done_at=${greptile%% *}
   greptile=${greptile#* }
   greptile_asked=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
-    --jq ".[] | select(.user.login == \"$me\" and .created_at > \"$greptile_done_at\" and (.body | test(\"^\\\\s*@greptileai\\\\b\"))) | .id")
+    --jq ".[] | select(.user.login == \"$me\" and .created_at > \"$greptile_done_at\" and (.body | test(\"^\\\\s*@greptileai(\\\\s+review)?\\\\s*$\"))) | .id")
   if [ -n "$greptile_asked" ]; then
     echo "greptile: pending"
     reported=0
