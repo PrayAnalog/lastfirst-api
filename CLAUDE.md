@@ -15,7 +15,7 @@
   actually ran.
 - Run `record-review.sh` only after `/code-review`, the OCR `delegate
   preview` command, plus `delegate rule` when the preview lists reviewable
-  files, and `codex-effort.sh review` have produced output in the same turn, including
+  files, and `codex review` have produced output in the same turn, including
   for a one-line review fix: the stamp records that a review ran, it does not run one.
 - For any request to create a tag or deploy, follow
   `.claude/skills/release-tag/SKILL.md` before running `git tag`: it shows every
