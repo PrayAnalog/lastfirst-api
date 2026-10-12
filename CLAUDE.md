@@ -8,15 +8,15 @@
 - Before opening a PR, before every push that answers review feedback, and
   before pushing a branch rebased onto a base that moved, work through
   `.agents/pre-pr-checklist.md` against the branch diff, then run
-  `/code-review` and the OCR review in `.agents/ocr-review.md` against the base
-  branch. The gate in `.claude/hooks/require-code-review.sh` denies
+  `/code-review`, the OCR review in `.agents/ocr-review.md` and the Codex
+  review in `.agents/codex-review.md` against the base branch. The gate in `.claude/hooks/require-code-review.sh` denies
   `gh pr create`, and `.claude/skills/ship-change/open-pr.sh` refuses to push,
   until the review stamp is present; neither verifies that these steps
   actually ran.
-- Run `record-review.sh` only after `/code-review` and the OCR `delegate
+- Run `record-review.sh` only after `/code-review`, the OCR `delegate
   preview` command, plus `delegate rule` when the preview lists reviewable
-  files, have produced output in the same turn, including for a one-line
-  review fix: the stamp records that a review ran, it does not run one.
+  files, and `codex review` have produced output in the same turn, including
+  for a one-line review fix: the stamp records that a review ran, it does not run one.
 - For any request to create a tag or deploy, follow
   `.claude/skills/release-tag/SKILL.md` before running `git tag`: it shows every
   pull request's pre-deploy checks once, in order, and waits for the user.

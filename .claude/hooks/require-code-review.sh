@@ -53,4 +53,4 @@ stamp=$(review_stamp "$sha" "$gitdir" "$base_ref") || deny "$stamp"
 
 [ -f "$stamp" ] && exit 0
 
-deny "Work through .agents/pre-pr-checklist.md against this branch's diff and run /code-review and the OCR review in .agents/ocr-review.md on it before opening the PR. Apply what they find, or record why you are declining it. Then record the review by running \`.claude/skills/ship-change/record-review.sh${base_ref:+ $(printf '%q' "$base_ref")}\` as a command of its own and retry this command. Applying fixes moves HEAD, so the next commit needs its own review."
+deny "Work through .agents/pre-pr-checklist.md against this branch's diff and run /code-review, the OCR review in .agents/ocr-review.md and the Codex review in .agents/codex-review.md on it before opening the PR. Apply what they find, or record why you are declining it. Then record the review by running \`.claude/skills/ship-change/record-review.sh${base_ref:+ $(printf '%q' "$base_ref")}\` as a command of its own and retry this command. Applying fixes moves HEAD, so the next commit needs its own review."

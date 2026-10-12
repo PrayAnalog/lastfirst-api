@@ -1,6 +1,6 @@
 ---
 name: ship-change
-description: Takes an implementation request in lastfirst-api from requirement to a pull request with no actionable review-bot findings left — splits it into one PR per change, implements each on its own branch from origin/main, passes the pre-PR checklist, /code-review and the OCR review, opens the PR, then repeats review rounds until every CodeRabbit and Codex finding is fixed or declined with evidence. Use for any request here to implement, fix, harden or change behavior ("구현해", "고쳐", "PR 올려"), even when the request does not mention review, branches or PRs.
+description: Takes an implementation request in lastfirst-api from requirement to a pull request with no actionable review-bot findings left — splits it into one PR per change, implements each on its own branch from origin/main, passes the pre-PR checklist, /code-review, the OCR review and the Codex review, opens the PR, then repeats review rounds until every CodeRabbit and Codex finding is fixed or declined with evidence. Use for any request here to implement, fix, harden or change behavior ("구현해", "고쳐", "PR 올려"), even when the request does not mention review, branches or PRs.
 ---
 
 # Ship a change
@@ -61,8 +61,9 @@ shutdown. For any other change, run `git diff --check`.
    diagram in section 5, covers `git diff origin/<base>...HEAD`: a local
    `<base>`, checked out in another worktree, can lag behind it. A stacked
    PR's base is a pushed branch, so the fetch finds it too.
-2. Work through `.agents/pre-pr-checklist.md`, then run `/code-review` and the
-   OCR review in `.agents/ocr-review.md`. Fix what they find, or note why not.
+2. Work through `.agents/pre-pr-checklist.md`, then run `/code-review`, the
+   OCR review in `.agents/ocr-review.md` and the Codex review in
+   `.agents/codex-review.md`. Fix what they find, or note why not.
    For lifecycle and error-path changes, list each branch the diff adds or
    keeps that ends the process, and state what is still running when it
    fires. A branch dismissed as "startup only" or "same as base" needs the
