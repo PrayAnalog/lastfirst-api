@@ -39,19 +39,28 @@ blocked=0
 
 # cubic reports each review as a check run on the commit it reviewed: success
 # once the review is posted, neutral when it did not run, such as at a usage
-# limit, which it explains in a PR comment.
-cubic=$(gh api --paginate "repos/$repo/commits/$head/check-runs" \
-  --jq '.check_runs[] | select(.app.slug == "cubic-dev-ai") | "\(.status) \(.conclusion)"' | head -n 1)
+# limit, which it explains in a PR comment. That run stays the latest until a
+# requested review starts a new one, so a request posted since the push means
+# the bot is working, not blocked.
+cubic=$(gh api "repos/$repo/commits/$head/check-runs?check_name=cubic%20%C2%B7%20AI%20code%20reviewer" \
+  --jq '[.check_runs[] | select(.app.slug == "cubic-dev-ai")][0] // empty | "\(.status) \(.conclusion)"')
+cubic_asked=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
+  --jq ".[] | select(.user.login == \"$me\" and .created_at >= \"$pushed\" and (.body | test(\"^\\\\s*@cubic-dev-ai review\"))) | .id")
 case "$cubic" in
   "completed success")
     echo "cubic: reviewed this head"
     ;;
   completed*)
-    echo "cubic: did not review this head (${cubic#completed }); read its latest PR comment, then comment '@cubic-dev-ai review' once it can run"
-    blocked=1
+    if [ -n "$cubic_asked" ]; then
+      echo "cubic: review requested after it did not run"
+      reported=0
+    else
+      echo "cubic: did not review this head (${cubic#completed }); read its latest PR comment, then comment '@cubic-dev-ai review' once it can run"
+      blocked=1
+    fi
     ;;
   *)
-    echo "cubic: pending"
+    echo "cubic: pending; a PR opened before cubic was installed needs '@cubic-dev-ai review this PR'"
     reported=0
     ;;
 esac
