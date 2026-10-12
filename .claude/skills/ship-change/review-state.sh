@@ -61,8 +61,12 @@ case "$cubic" in
       blocked=1
     fi
     ;;
-  *)
+  "")
     echo "cubic: pending; a PR opened before cubic was installed needs '@cubic-dev-ai review this PR'"
+    reported=0
+    ;;
+  *)
+    echo "cubic: pending"
     reported=0
     ;;
 esac
