@@ -265,3 +265,9 @@ head, with the head commit you reviewed:
 It squash-merges only when `review-state.sh` reports `verdict: quiet`, every
 check passes and the merge state is `CLEAN`; otherwise it prints what stopped
 it and merges nothing.
+
+After a merge, run `.claude/skills/ship-change/codex-effort.sh report`. Once
+it counts 15 merged code pull requests reviewed at both efforts, it prints the
+runs and logged findings per effort; show them to the user and ask which
+reasoning effort the Codex review should keep. Until then, mention only the
+count.
