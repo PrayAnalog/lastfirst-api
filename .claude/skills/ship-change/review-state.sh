@@ -80,7 +80,8 @@ esac
 # with no run left it stands for a successful one that finished when the
 # comment was last updated. Any top-level @greptileai comment starts a review,
 # but only a bare request after a finished run is waited for again: a
-# question asked after the review gets an answer, not a new run.
+# question asked after the review gets an answer, not a new run. A request
+# counts from anyone with write access, not only from you.
 changed=$(gh api --paginate "repos/$repo/pulls/$pr/files" --jq '.[] | .filename, (.previous_filename // empty)')
 if grep -Eq '^(cmd/|internal/|deploy/|Dockerfile$|go\.mod$)' <<<"$changed"; then
   shas=$(gh api --paginate "repos/$repo/pulls/$pr/commits" --jq '.[].sha')
@@ -99,9 +100,9 @@ if grep -Eq '^(cmd/|internal/|deploy/|Dockerfile$|go\.mod$)' <<<"$changed"; then
   greptile_done_at=${greptile%% *}
   greptile=${greptile#* }
   greptile_asked=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
-    --jq ".[] | select(.user.login == \"$me\" and .created_at > \"$greptile_done_at\" and (.body | test(\"^\\\\s*@greptileai(\\\\s+review)?\\\\s*$\"))) | .id")
+    --jq ".[] | select((.author_association | IN(\"OWNER\", \"MEMBER\", \"COLLABORATOR\")) and .created_at > \"$greptile_done_at\" and (.body | test(\"^\\\\s*@greptileai(\\\\s+review)?\\\\s*$\"))) | .id")
   greptile_ever_asked=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
-    --jq ".[] | select(.user.login == \"$me\" and (.body | test(\"^\\\\s*@greptileai\\\\b\"))) | .id")
+    --jq ".[] | select((.author_association | IN(\"OWNER\", \"MEMBER\", \"COLLABORATOR\")) and (.body | test(\"^\\\\s*@greptileai\\\\b\"))) | .id")
   if [ -n "$greptile_asked" ]; then
     echo "greptile: pending"
     reported=0
