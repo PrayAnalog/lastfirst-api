@@ -63,13 +63,15 @@ report)
     echo "merged code PRs reviewed at both efforts: 0/$target"
     exit 0
   fi
-  reviewed=$(jq -r 'select(.code) | .branch' "$dir/runs.jsonl" | LC_ALL=C sort -u) || exit 1
-  merged=$(gh pr list --state merged --limit 1000 --json headRefName --jq '.[].headRefName' | LC_ALL=C sort -u) || exit 1
-  selected=$(LC_ALL=C comm -12 <(printf '%s\n' "$reviewed") <(printf '%s\n' "$merged") | grep .)
-  n=$(printf '%s' "$selected" | grep -c .)
+  merged=$(gh pr list --state merged --limit 1000 --json headRefOid --jq '.[].headRefOid') || exit 1
+  heads=$(jq -sc --arg merged "$merged" '($merged | split("\n")) as $m
+    | map(select(.code and .exit == 0 and (.head | IN($m[]))))
+    | group_by(.head) | map(select((map(.effort) | unique) == ["high", "low"]))
+    | map({head: .[0].head, branch: .[0].branch})' "$dir/runs.jsonl") || exit 1
+  n=$(printf '%s' "$heads" | jq 'length') || exit 1
   echo "merged code PRs reviewed at both efforts: $n/$target"
   [ "$n" -ge "$target" ] || exit 0
-  branches=$(printf '%s\n' "$selected" | jq -Rsc 'split("\n") | map(select(. != ""))') || exit 1
+  branches=$(printf '%s' "$heads" | jq -c 'map(.branch) | unique') || exit 1
   jq -s --argjson b "$branches" 'map(select(.code and (.branch | IN($b[])))) | group_by(.effort) | map({effort: .[0].effort, runs: length,
     failed: map(select(.exit != 0)) | length,
     mean_seconds: (map(.seconds) | add / length)})' "$dir/runs.jsonl" || exit 1
