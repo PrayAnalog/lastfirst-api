@@ -2,14 +2,14 @@
 # Usage: review-bodies.sh <pr-number>
 #
 # Prints what section 6 of SKILL.md says to read yourself once review-state.sh
-# stops at `verdict: unapproved` or `verdict: quiet`, in one call: every
-# CodeRabbit review body on the PR, CodeRabbit's summary comment, and every
-# review thread with all of its comments, resolved ones included, because
-# CodeRabbit resolves a thread itself once it accepts the reply. HTML
-# comments are dropped everywhere. Review bodies keep their <details> blocks,
-# which is where CodeRabbit puts findings outside the diff; the summary and
-# thread comments drop them, since there they hold the walkthrough, the
-# analysis chain and the proposed patch.
+# stops at `verdict: quiet`, in one call: every cubic and CodeRabbit review
+# body on the PR, CodeRabbit's summary comment, and every review thread with
+# all of its comments, resolved ones included, because cubic and CodeRabbit
+# resolve a thread themselves once they consider its finding addressed. HTML comments are
+# dropped everywhere. Review bodies keep their <details> blocks, which is
+# where CodeRabbit puts findings outside the diff; the summary and thread
+# comments drop them, since there they hold the walkthrough, the analysis
+# chain and the proposed patch.
 set -euo pipefail
 
 pr=${1:?usage: review-bodies.sh <pr-number>}
@@ -18,10 +18,10 @@ no_comments='gsub("<!--[\\s\\S]*?-->"; "")'
 no_details='gsub("<details>[\\s\\S]*?</details>"; "")'
 squeeze='gsub("\\n\\s*\\n(\\s*\\n)+"; "\n\n")'
 
-echo "## CodeRabbit review bodies"
+echo "## cubic and CodeRabbit review bodies"
 gh api --paginate "repos/$repo/pulls/$pr/reviews" \
-  --jq ".[] | select(.user.login == \"coderabbitai[bot]\")
-    | \"### \(.state) on \(.commit_id[0:7]) at \(.submitted_at)\n\" + (.body | $no_comments | $squeeze)"
+  --jq ".[] | select(.user.login == \"cubic-dev-ai[bot]\" or .user.login == \"coderabbitai[bot]\")
+    | \"### \(.user.login) \(.state) on \(.commit_id[0:7]) at \(.submitted_at)\n\" + (.body | $no_comments | $squeeze)"
 
 echo
 echo "## CodeRabbit summary comment"

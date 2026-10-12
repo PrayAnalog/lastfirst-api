@@ -42,7 +42,7 @@ stored=$(gh pr view --json body --jq .body | tr -d '\r')
 images='!\[[^]]*\]\([^)]*\)'
 strip() { sed -E 's/(!\[[^]]*\])\([^)]*\)/\1()/g'; }
 
-# CodeRabbit appends its summary to the body, so the file only has to be a
+# cubic and CodeRabbit append their summaries to the body, so the file only has to be a
 # prefix. gh appends an attachment the body does not reference, which shows
 # up as one image more than the file has, and leaves a reference whose upload
 # failed pointing at the local path.

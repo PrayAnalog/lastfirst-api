@@ -108,7 +108,7 @@ by every app container alive at once; keep the one-container rule in
 
 ## 6. Re-read the authoring rules for the paths touched
 
-Re-read `path_instructions` in `.coderabbit.yaml` and **Production boundaries**
+Re-read `custom_instructions` in `cubic.yaml` and **Production boundaries**
 in `AGENTS.md` for each directory in the diff, and all of
 `.agents/code-review.md`, and apply them as authoring rules, not just review
 rules.
