@@ -92,7 +92,7 @@ if grep -Eq '^(cmd/|internal/|deploy/|Dockerfile$|go\.mod$)' <<<"$changed"; then
   done
   if [ -z "$greptile" ]; then
     greptile=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
-      --jq '.[] | select(.user.login == "greptile-apps[bot]" and (.body | contains("Confidence Score"))) | "\(.updated_at) completed success"' | tail -n 1)
+      --jq '.[] | select(.user.login == "greptile-apps[bot]" and (.body | contains("Confidence Score"))) | "\(.updated_at) completed success"' | sort | tail -n 1)
   fi
   greptile_done_at=${greptile%% *}
   greptile=${greptile#* }
@@ -198,13 +198,13 @@ query($owner: String!, $name: String!, $pr: Int!, $cursor: String) {
   threads+=$(jq -r --arg me "$me" '.data.repository.pullRequest.reviewThreads.nodes[]
     | select(.isResolved | not)
     | .root.nodes[0] as $c
-    | ($c.body | gsub("<details>[\\s\\S]*?</details>"; "")) as $text
+    | ($c.body | gsub("<details>[\\s\\S]*?</details>"; "") | gsub("<!--[\\s\\S]*?-->"; "")) as $text
     | [.recent.nodes[] | select(.fullDatabaseId != $c.fullDatabaseId) | .author.login] as $who
     | (if ($who | index($me)) == null then "UNANSWERED "
        elif $who[-1] == $me then "answered   "
        else "bot-replied" end)
       + "  \($c.fullDatabaseId)  \($c.author.login)  \($c.path):\($c.line // $c.originalLine)  "
-      + (($text | capture("\\*\\*(?<t>[^*]+)\\*\\*").t // ($text | ltrimstr("\n") | split("\n")[0]))
+      + (($text | capture("\\*\\*(?<t>[^*]+)\\*\\*").t // ($text | sub("^\\s+"; "") | split("\n")[0]))
          | sub("<sub>.*</sub>\\s*"; ""))' <<<"$page")
   threads+=$'\n'
   [ "$(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage' <<<"$page")" = true ] || break
