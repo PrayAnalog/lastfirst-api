@@ -40,12 +40,14 @@ blocked=0
 # cubic reports each review as a check run on the commit it reviewed: success
 # once the review is posted, neutral when it did not run, such as at a usage
 # limit, which it explains in a PR comment. That run stays the latest until a
-# requested review starts a new one, so a request posted since the push means
-# the bot is working, not blocked.
+# requested review starts a new one, so a request posted after it finished
+# means the bot is working, not blocked.
 cubic=$(gh api "repos/$repo/commits/$head/check-runs?check_name=cubic%20%C2%B7%20AI%20code%20reviewer" \
-  --jq '[.check_runs[] | select(.app.slug == "cubic-dev-ai")][0] // empty | "\(.status) \(.conclusion)"')
+  --jq '[.check_runs[] | select(.app.slug == "cubic-dev-ai")][0] // empty | "\(.status) \(.conclusion) \(.completed_at)"')
+cubic_done_at=${cubic##* }
+cubic=${cubic% *}
 cubic_asked=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
-  --jq ".[] | select(.user.login == \"$me\" and .created_at >= \"$pushed\" and (.body | test(\"^\\\\s*@cubic-dev-ai review\"))) | .id")
+  --jq ".[] | select(.user.login == \"$me\" and .created_at > \"$cubic_done_at\" and (.body | test(\"^\\\\s*@cubic-dev-ai review\"))) | .id")
 case "$cubic" in
   "completed success")
     echo "cubic: reviewed this head"
