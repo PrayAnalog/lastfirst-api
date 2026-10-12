@@ -1,6 +1,12 @@
 lastfirst.app {
 	log {
-		format json
+		format filter {
+			wrap json
+			request>remote_ip ip_mask 24 48
+			request>client_ip ip_mask 24 48
+			request>headers>X-Forwarded-For ip_mask 24 48
+			request>headers>X-Real-Ip ip_mask 24 48
+		}
 	}
 	request_body {
 		max_size 8192
