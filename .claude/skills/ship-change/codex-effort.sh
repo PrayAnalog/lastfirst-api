@@ -59,6 +59,10 @@ finding)
       outcome: $outcome, summary: $summary}' >>"$dir/findings.jsonl"
   ;;
 report)
+  if [ ! -f "$dir/runs.jsonl" ]; then
+    echo "merged code PRs reviewed at both efforts: 0/$target"
+    exit 0
+  fi
   reviewed=$(jq -r 'select(.code) | .branch' "$dir/runs.jsonl" | LC_ALL=C sort -u) || exit 1
   merged=$(gh pr list --state merged --limit 1000 --json headRefName --jq '.[].headRefName' | LC_ALL=C sort -u) || exit 1
   selected=$(LC_ALL=C comm -12 <(printf '%s\n' "$reviewed") <(printf '%s\n' "$merged") | grep .)
