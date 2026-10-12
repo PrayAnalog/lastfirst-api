@@ -78,8 +78,10 @@ esac
 # request posted after that run finished means it is working again. A rebase
 # drops the reviewed commit from the PR; Greptile's summary comment stays, so
 # with no run left it stands for a successful one that finished when the
-# comment was last updated.
-changed=$(gh pr diff "$pr" --name-only)
+# comment was last updated. Any top-level @greptileai comment starts a review,
+# but only a bare request after a finished run is waited for again: a
+# question asked after the review gets an answer, not a new run.
+changed=$(gh api --paginate "repos/$repo/pulls/$pr/files" --jq '.[] | .filename, (.previous_filename // empty)')
 if grep -Eq '^(cmd/|internal/|deploy/|Dockerfile$|go\.mod$)' <<<"$changed"; then
   shas=$(gh api --paginate "repos/$repo/pulls/$pr/commits" --jq '.[].sha')
   greptile=""
@@ -98,6 +100,8 @@ if grep -Eq '^(cmd/|internal/|deploy/|Dockerfile$|go\.mod$)' <<<"$changed"; then
   greptile=${greptile#* }
   greptile_asked=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
     --jq ".[] | select(.user.login == \"$me\" and .created_at > \"$greptile_done_at\" and (.body | test(\"^\\\\s*@greptileai(\\\\s+review)?\\\\s*$\"))) | .id")
+  greptile_ever_asked=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
+    --jq ".[] | select(.user.login == \"$me\" and (.body | test(\"^\\\\s*@greptileai\\\\b\"))) | .id")
   if [ -n "$greptile_asked" ]; then
     echo "greptile: pending"
     reported=0
@@ -111,8 +115,13 @@ if grep -Eq '^(cmd/|internal/|deploy/|Dockerfile$|go\.mod$)' <<<"$changed"; then
         blocked=1
         ;;
       "")
-        echo "greptile: not asked; comment '@greptileai' on the PR once"
-        blocked=1
+        if [ -n "$greptile_ever_asked" ]; then
+          echo "greptile: pending"
+          reported=0
+        else
+          echo "greptile: not asked; comment '@greptileai' on the PR once"
+          blocked=1
+        fi
         ;;
       *)
         echo "greptile: pending"
