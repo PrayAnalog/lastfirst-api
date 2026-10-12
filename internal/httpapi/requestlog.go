@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"time"
 	"unicode/utf8"
 )
@@ -63,7 +64,7 @@ func logRequests(next http.Handler) http.Handler {
 			"path", clip(r.URL.Path),
 			"status", status,
 			"duration_ms", float64(time.Since(start).Microseconds()) / 1000,
-			"ip", clientIP(r),
+			"ip", maskIP(clientIP(r)),
 		}
 		if rec.playlistID != "" {
 			attrs = append(attrs, "playlist_id", clip(rec.playlistID))
@@ -87,4 +88,18 @@ func clip(s string) string {
 		n--
 	}
 	return s[:n]
+}
+
+func maskIP(s string) string {
+	addr, err := netip.ParseAddr(s)
+	if err != nil {
+		return ""
+	}
+	addr = addr.Unmap()
+	bits := 24
+	if addr.Is6() {
+		bits = 48
+	}
+	prefix, _ := addr.Prefix(bits)
+	return prefix.Addr().String()
 }

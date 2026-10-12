@@ -70,8 +70,8 @@ func TestHandlerLogsEachRequest(t *testing.T) {
 	}
 
 	want := []map[string]any{
-		{"method": "POST", "path": "/api/playlists", "status": float64(http.StatusInternalServerError), "ip": "203.0.113.7", "playlist_id": "PLabc123"},
-		{"method": "POST", "path": "/api/playlists", "status": float64(http.StatusBadRequest), "ip": "203.0.113.8"},
+		{"method": "POST", "path": "/api/playlists", "status": float64(http.StatusInternalServerError), "ip": "203.0.113.0", "playlist_id": "PLabc123"},
+		{"method": "POST", "path": "/api/playlists", "status": float64(http.StatusBadRequest), "ip": "203.0.113.0"},
 	}
 	for i, w := range want {
 		for k, v := range w {
@@ -85,6 +85,29 @@ func TestHandlerLogsEachRequest(t *testing.T) {
 	}
 	if _, ok := got[1]["playlist_id"]; ok {
 		t.Errorf("record 1: playlist_id = %v, want absent for unparsed input", got[1]["playlist_id"])
+	}
+}
+
+func TestHandlerLogMasksIP(t *testing.T) {
+	cases := []struct{ forwarded, want string }{
+		{"2001:db8:abcd:12::1", "2001:db8:abcd::"},
+		{"::ffff:198.51.100.9", "198.51.100.0"},
+	}
+	for _, c := range cases {
+		buf := captureLogs(t)
+		h := newTestHandler(t)
+
+		r := httptest.NewRequest("GET", "/", nil)
+		r.Header.Set("X-Forwarded-For", c.forwarded)
+		h.ServeHTTP(httptest.NewRecorder(), r)
+
+		got := requestRecords(t, buf)
+		if len(got) != 1 {
+			t.Fatalf("%s: got %d request log records, want 1", c.forwarded, len(got))
+		}
+		if got[0]["ip"] != c.want {
+			t.Errorf("%s: ip = %v, want %q", c.forwarded, got[0]["ip"], c.want)
+		}
 	}
 }
 
