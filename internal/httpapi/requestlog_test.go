@@ -61,7 +61,7 @@ func TestHandlerLogsEachRequest(t *testing.T) {
 	h.ServeHTTP(httptest.NewRecorder(), parsed)
 
 	invalid := httptest.NewRequest("POST", "/api/playlists", strings.NewReader(`{"input":"not a playlist"}`))
-	invalid.Header.Set("X-Forwarded-For", "203.0.113.8")
+	invalid.Header.Set("X-Forwarded-For", "198.51.100.8")
 	h.ServeHTTP(httptest.NewRecorder(), invalid)
 
 	got := requestRecords(t, buf)
@@ -71,7 +71,7 @@ func TestHandlerLogsEachRequest(t *testing.T) {
 
 	want := []map[string]any{
 		{"method": "POST", "path": "/api/playlists", "status": float64(http.StatusInternalServerError), "ip": "203.0.113.0", "playlist_id": "PLabc123"},
-		{"method": "POST", "path": "/api/playlists", "status": float64(http.StatusBadRequest), "ip": "203.0.113.0"},
+		{"method": "POST", "path": "/api/playlists", "status": float64(http.StatusBadRequest), "ip": "198.51.100.0"},
 	}
 	for i, w := range want {
 		for k, v := range w {
