@@ -75,7 +75,10 @@ esac
 # Greptile reviews only when asked, and its free plan covers about one review
 # per production PR a month, so it is asked once per PR, not per push: the
 # latest Greptile Review check run on any commit of the PR counts, and a
-# request posted after that run finished means it is working again.
+# request posted after that run finished means it is working again. A rebase
+# drops the reviewed commit from the PR; Greptile's summary comment stays, so
+# with no run left it stands for a successful one that finished when the
+# comment was last updated.
 changed=$(gh pr diff "$pr" --name-only)
 if grep -Eq '^(cmd/|internal/|deploy/|Dockerfile$|go\.mod$)' <<<"$changed"; then
   shas=$(gh api --paginate "repos/$repo/pulls/$pr/commits" --jq '.[].sha')
@@ -87,6 +90,10 @@ if grep -Eq '^(cmd/|internal/|deploy/|Dockerfile$|go\.mod$)' <<<"$changed"; then
       greptile=$run
     fi
   done
+  if [ -z "$greptile" ]; then
+    greptile=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
+      --jq '.[] | select(.user.login == "greptile-apps[bot]" and (.body | contains("Confidence Score"))) | "\(.updated_at) completed success"' | tail -n 1)
+  fi
   greptile_done_at=${greptile%% *}
   greptile=${greptile#* }
   greptile_asked=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
