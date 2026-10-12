@@ -3,10 +3,10 @@
 #
 # Prints what section 6 of SKILL.md says to read yourself once review-state.sh
 # stops at `verdict: quiet`, in one call: every cubic and CodeRabbit review
-# body on the PR, CodeRabbit's summary comment, and every review thread with
-# all of its comments, resolved ones included, because cubic and CodeRabbit
-# resolve a thread themselves once they consider its finding addressed. HTML comments are
-# dropped everywhere. Review bodies keep their <details> blocks, which is
+# body on the PR, CodeRabbit's and Greptile's summary comments, and every
+# review thread with all of its comments, resolved ones included, because
+# cubic and CodeRabbit resolve a thread themselves once they consider its
+# finding addressed. HTML comments are dropped everywhere. Review bodies keep their <details> blocks, which is
 # where CodeRabbit puts findings outside the diff; the summary and thread
 # comments drop them, since there they hold the walkthrough, the analysis
 # chain and the proposed patch.
@@ -28,6 +28,12 @@ echo "## CodeRabbit summary comment"
 gh api --paginate "repos/$repo/issues/$pr/comments" \
   --jq ".[] | select(.user.login == \"coderabbitai[bot]\" and (.body | contains(\"summarize by coderabbit.ai\")))
     | .body | $no_comments | $no_details | $squeeze"
+
+echo
+echo "## Greptile summary comment"
+gh api --paginate "repos/$repo/issues/$pr/comments" \
+  --jq ".[] | select(.user.login == \"greptile-apps[bot]\")
+    | .body | $no_comments | $squeeze"
 
 echo
 echo "## Review threads"

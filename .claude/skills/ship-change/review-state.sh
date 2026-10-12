@@ -18,9 +18,10 @@
 #                        replied after it; whether a reply resolved its
 #                        finding is not checked
 #
-# The bots that must report are cubic and Codex. CodeRabbit no longer reviews
-# this repository on its own, so it is not waited for; its threads and
-# outside-diff findings still count when it does review.
+# The bots that must report are cubic and Codex, and Greptile once per PR
+# that touches cmd/, internal/, deploy/, Dockerfile or go.mod. CodeRabbit no
+# longer reviews this repository on its own, so it is not waited for; its
+# threads and outside-diff findings still count when it does review.
 set -euo pipefail
 
 pr=${1:?usage: review-state.sh <pr-number>}
@@ -70,6 +71,49 @@ case "$cubic" in
     reported=0
     ;;
 esac
+
+# Greptile reviews only when asked, and its free plan covers about one review
+# per production PR a month, so it is asked once per PR, not per push: the
+# latest Greptile Review check run on any commit of the PR counts, and a
+# request posted after that run finished means it is working again.
+changed=$(gh pr diff "$pr" --name-only)
+if grep -Eq '^(cmd/|internal/|deploy/|Dockerfile$|go\.mod$)' <<<"$changed"; then
+  shas=$(gh api --paginate "repos/$repo/pulls/$pr/commits" --jq '.[].sha')
+  greptile=""
+  for sha in $shas; do
+    run=$(gh api "repos/$repo/commits/$sha/check-runs?check_name=Greptile%20Review" \
+      --jq '[.check_runs[] | select(.app.slug == "greptile-apps")][0] // empty | "\(.completed_at) \(.status) \(.conclusion)"')
+    if [[ "$run" > "$greptile" ]]; then
+      greptile=$run
+    fi
+  done
+  greptile_done_at=${greptile%% *}
+  greptile=${greptile#* }
+  greptile_asked=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
+    --jq ".[] | select(.user.login == \"$me\" and .created_at > \"$greptile_done_at\" and (.body | test(\"^\\\\s*@greptileai\\\\b\"))) | .id")
+  if [ -n "$greptile_asked" ]; then
+    echo "greptile: pending"
+    reported=0
+  else
+    case "$greptile" in
+      "completed success")
+        echo "greptile: reviewed this PR"
+        ;;
+      completed*)
+        echo "greptile: did not review this PR (${greptile#completed }); read its latest PR comment, then comment '@greptileai' once it can run"
+        blocked=1
+        ;;
+      "")
+        echo "greptile: not asked; comment '@greptileai' on the PR once"
+        blocked=1
+        ;;
+      *)
+        echo "greptile: pending"
+        reported=0
+        ;;
+    esac
+  fi
+fi
 
 # Findings outside the diff exist only in a review body, never as a thread, so
 # they stay open until a PR comment from you follows the review, whichever
