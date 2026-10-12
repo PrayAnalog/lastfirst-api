@@ -25,7 +25,9 @@ for a person typing it; it is marked `disable-model-invocation`, so a session
 runs the CLI instead.
 
 When `codex` is missing or not signed in, stop and tell the user: install it
-with `npm install -g @openai/codex` and sign in with `codex login`.
+with `npm install -g @openai/codex` and sign in with `codex login`. When the
+timeout kills the review before it prints one, stop and tell the user too;
+do not record the review.
 
 Handle what it finds the same way as `/code-review` findings: fix each one, or
 record why you are declining it.
