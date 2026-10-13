@@ -187,7 +187,10 @@ function whose signature the diff changes, run the section 3 checks of
 `git diff origin/<base>...HEAD`, and only then run `record-review.sh <base>`,
 with the pull request's base as `<base>` in all of them: a local `<base>` can
 still point at the commit before the base moved. The rebases of #127 onto
-#126 and of #132 onto #128 each broke this way.
+#126 and of #132 onto #128 each broke this way. After pushing it with
+`git push --force-with-lease`, comment `@cubic-dev-ai review` on the pull
+request as section 6 of `ship-change` describes: cubic does not review a head
+that rewrote branch history, as on #170.
 
 ## 13. Test a new selection against every input form its source allows
 

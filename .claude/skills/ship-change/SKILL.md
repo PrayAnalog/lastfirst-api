@@ -220,7 +220,22 @@ Korean, matching the review language `cubic.yaml` and `AGENTS.md` set.
 Push with `.claude/skills/ship-change/push-and-check.sh <pr>`, which pushes
 and prints the `review-state.sh` report for the new head (use a plain
 `git push --force-with-lease` after a rebase). Update the PR body if the
-approach changed, and wait again. Stop when
+approach changed, and wait again.
+
+After every `git push --force-with-lease` of a rebased branch, here or for a
+stacked PR rebased onto `main`, comment `@cubic-dev-ai review` on the PR.
+cubic does not review a head that rewrote branch history: its check run on
+that head finishes `neutral` within seconds of the push, titled "Automatic AI
+review not started after branch rewrite", as on #170's head `b7fb298`. Post
+the comment once that run shows on the new head:
+
+```bash
+gh api "repos/PrayAnalog/lastfirst-api/commits/$(git rev-parse HEAD)/check-runs?check_name=cubic%20%C2%B7%20AI%20code%20reviewer" \
+  --jq '.check_runs[0].output.title'
+```
+
+`review-state.sh` counts only a request posted after that run finished, and
+reports the head as `blocked` until one is. Stop when
 the script prints `verdict: quiet`, or when the user decides to stop at one of
 the questions above. Before treating `verdict: quiet` as done, read every
 cubic and CodeRabbit review body, CodeRabbit's summary comment and every
