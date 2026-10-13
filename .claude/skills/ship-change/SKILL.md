@@ -235,7 +235,8 @@ gh api "repos/PrayAnalog/lastfirst-api/commits/$(git rev-parse HEAD)/check-runs?
 ```
 
 `review-state.sh` counts only a request posted after that run finished, and
-reports the head as `blocked` until one is.
+reports the head as `blocked` until one is. When the run starts a review
+instead, the push did not rewrite history; skip the comment.
 
 Update the PR body if the approach changed, and wait again. Stop when
 the script prints `verdict: quiet`, or when the user decides to stop at one of
