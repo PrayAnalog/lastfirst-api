@@ -226,11 +226,12 @@ stacked PR rebased onto `main`, comment `@cubic-dev-ai review` on the PR
 before waiting. cubic does not review a head that rewrote branch history: its
 check run on that head finishes `neutral` within seconds of the push, titled
 "Automatic AI review not started after branch rewrite", as on #170's head
-`b7fb298`. Post the comment once that run shows on the new head:
+`b7fb298`. Post the comment once this prints `completed neutral` with that
+title for the new head:
 
 ```bash
 gh api "repos/PrayAnalog/lastfirst-api/commits/$(git rev-parse HEAD)/check-runs?check_name=cubic%20%C2%B7%20AI%20code%20reviewer" \
-  --jq '.check_runs[0].output.title'
+  --jq '.check_runs[0] | "\(.status) \(.conclusion) \(.output.title)"'
 ```
 
 `review-state.sh` counts only a request posted after that run finished, and
