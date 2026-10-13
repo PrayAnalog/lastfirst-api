@@ -18,9 +18,10 @@
 #                        replied after it; whether a reply resolved its
 #                        finding is not checked
 #
-# The bots that must report are cubic and Codex. CodeRabbit no longer reviews
-# this repository on its own, so it is not waited for; its threads and
-# outside-diff findings still count when it does review.
+# The bots that must report are cubic and Codex, and Greptile once per PR
+# that touches cmd/, internal/, deploy/, Dockerfile or go.mod. CodeRabbit no
+# longer reviews this repository on its own, so it is not waited for; its
+# threads and outside-diff findings still count when it does review.
 set -euo pipefail
 
 pr=${1:?usage: review-state.sh <pr-number>}
@@ -70,6 +71,66 @@ case "$cubic" in
     reported=0
     ;;
 esac
+
+# Greptile reviews only when asked, and its free plan covers about one review
+# per production PR a month, so it is asked once per PR, not per push: the
+# latest Greptile Review check run on any commit of the PR counts, and a
+# request posted after that run finished means it is working again. A rebase
+# drops the reviewed commit from the PR; Greptile's summary comment stays, so
+# with no run left it stands for a successful one that finished when the
+# comment was last updated. Any top-level @greptileai comment starts a review,
+# but only a bare request after a finished run is waited for again: a
+# question asked after the review gets an answer, not a new run. A request
+# counts from anyone with write access, not only from you.
+changed=$(gh api --paginate "repos/$repo/pulls/$pr/files" --jq '.[] | .filename, (.previous_filename // empty)')
+if grep -Eq '^(cmd/|internal/|deploy/|Dockerfile$|go\.mod$)' <<<"$changed"; then
+  shas=$(gh api --paginate "repos/$repo/pulls/$pr/commits" --jq '.[].sha')
+  greptile=""
+  for sha in $shas; do
+    run=$(gh api "repos/$repo/commits/$sha/check-runs?check_name=Greptile%20Review" \
+      --jq '[.check_runs[] | select(.app.slug == "greptile-apps")][0] // empty | "\(.completed_at) \(.status) \(.conclusion)"')
+    if [[ "$run" > "$greptile" ]]; then
+      greptile=$run
+    fi
+  done
+  if [ -z "$greptile" ]; then
+    greptile=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
+      --jq '.[] | select(.user.login == "greptile-apps[bot]" and (.body | contains("Confidence Score"))) | "\(.updated_at) completed success"' | sort | tail -n 1)
+  fi
+  greptile_done_at=${greptile%% *}
+  greptile=${greptile#* }
+  greptile_asked=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
+    --jq ".[] | select((.author_association | IN(\"OWNER\", \"MEMBER\", \"COLLABORATOR\")) and .created_at > \"$greptile_done_at\" and (.body | test(\"^\\\\s*@greptileai(\\\\s+review)?\\\\s*$\"))) | .id")
+  greptile_ever_asked=$(gh api --paginate "repos/$repo/issues/$pr/comments" \
+    --jq ".[] | select((.author_association | IN(\"OWNER\", \"MEMBER\", \"COLLABORATOR\")) and (.body | test(\"^\\\\s*@greptileai\\\\b\"))) | .id")
+  if [ -n "$greptile_asked" ]; then
+    echo "greptile: pending"
+    reported=0
+  else
+    case "$greptile" in
+      "completed success")
+        echo "greptile: reviewed this PR"
+        ;;
+      completed*)
+        echo "greptile: did not review this PR (${greptile#completed }); read its latest PR comment, then comment '@greptileai' once it can run"
+        blocked=1
+        ;;
+      "")
+        if [ -n "$greptile_ever_asked" ]; then
+          echo "greptile: pending"
+          reported=0
+        else
+          echo "greptile: not asked; comment '@greptileai' on the PR once"
+          blocked=1
+        fi
+        ;;
+      *)
+        echo "greptile: pending"
+        reported=0
+        ;;
+    esac
+  fi
+fi
 
 # Findings outside the diff exist only in a review body, never as a thread, so
 # they stay open until a PR comment from you follows the review, whichever
@@ -147,13 +208,13 @@ query($owner: String!, $name: String!, $pr: Int!, $cursor: String) {
   threads+=$(jq -r --arg me "$me" '.data.repository.pullRequest.reviewThreads.nodes[]
     | select(.isResolved | not)
     | .root.nodes[0] as $c
-    | ($c.body | gsub("<details>[\\s\\S]*?</details>"; "")) as $text
+    | ($c.body | gsub("<details>[\\s\\S]*?</details>"; "") | gsub("<!--[\\s\\S]*?-->"; "")) as $text
     | [.recent.nodes[] | select(.fullDatabaseId != $c.fullDatabaseId) | .author.login] as $who
     | (if ($who | index($me)) == null then "UNANSWERED "
        elif $who[-1] == $me then "answered   "
        else "bot-replied" end)
       + "  \($c.fullDatabaseId)  \($c.author.login)  \($c.path):\($c.line // $c.originalLine)  "
-      + (($text | capture("\\*\\*(?<t>[^*]+)\\*\\*").t // ($text | ltrimstr("\n") | split("\n")[0]))
+      + (($text | capture("\\*\\*(?<t>[^*]+)\\*\\*").t // ($text | sub("^\\s+"; "") | split("\n")[0]))
          | sub("<sub>.*</sub>\\s*"; ""))' <<<"$page")
   threads+=$'\n'
   [ "$(jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage' <<<"$page")" = true ] || break

@@ -1,12 +1,12 @@
 ---
 name: ship-change
-description: Takes an implementation request in lastfirst-api from requirement to a pull request with no actionable review-bot findings left — splits it into one PR per change, implements each on its own branch from origin/main, passes the pre-PR checklist, /code-review, the OCR review and the Codex review, opens the PR, then repeats review rounds until every cubic and Codex finding is fixed or declined with evidence. Use for any request here to implement, fix, harden or change behavior ("구현해", "고쳐", "PR 올려"), even when the request does not mention review, branches or PRs.
+description: Takes an implementation request in lastfirst-api from requirement to a pull request with no actionable review-bot findings left — splits it into one PR per change, implements each on its own branch from origin/main, passes the pre-PR checklist, /code-review, the OCR review and the Codex review, opens the PR, then repeats review rounds until every cubic, Codex and Greptile finding is fixed or declined with evidence. Use for any request here to implement, fix, harden or change behavior ("구현해", "고쳐", "PR 올려"), even when the request does not mention review, branches or PRs.
 ---
 
 # Ship a change
 
-In this repository a change is finished when no actionable cubic or Codex
-finding remains on its PR and every other finding is declined with evidence,
+In this repository a change is finished when no actionable cubic, Codex or
+Greptile finding remains on its PR and every other finding is declined with evidence,
 not when it compiles. A PR that bundles several requirements draws review
 rounds across all of them, because every fix in one area reopens review of the
 rest; this skill keeps each change small enough to converge. Follow every
@@ -163,6 +163,11 @@ after the change is verified in production.
 
 For a stacked PR, say which PR it builds on.
 
+When the diff touches `cmd/`, `internal/`, `deploy/`, `Dockerfile` or
+`go.mod`, comment `@greptileai` on the PR once, right after opening it.
+Greptile reviews only when asked, and its free plan's 50 reviews a month
+cover about one per such PR, so do not ask again after a push.
+
 ## 6. Review rounds
 
 Wait for both bots on the current head, without polling by hand:
@@ -177,8 +182,10 @@ report once the verdict is anything but `waiting`. Run it in the background
 stacked PR re-runs review after its rebase onto `main`: take the next change
 from the section 1 list only after this PR is reported done, or after the user
 stops its rounds at one of the questions below.
-On `verdict: blocked`, post the comment the script names for the blocked bot,
-then ask the user whether to wait for it or finish without it.
+On `verdict: blocked` with `greptile: not asked`, post `@greptileai` and wait
+again. On any other `verdict: blocked`, post the comment the script names for
+the blocked bot, then ask the user whether to wait for it or finish without
+it.
 
 For each open finding, read the code it points at, then take the first of
 these that applies:
@@ -223,15 +230,15 @@ and prints the `review-state.sh` report for the new head (use a plain
 approach changed, and wait again. Stop when
 the script prints `verdict: quiet`, or when the user decides to stop at one of
 the questions above. Before treating `verdict: quiet` as done, read every
-cubic and CodeRabbit review body, CodeRabbit's summary comment and every
-thread marked `bot-replied`. `review-bodies.sh <pr>` prints them in one call:
+cubic and CodeRabbit review body, CodeRabbit's and Greptile's summary
+comments and every thread marked `bot-replied`. `review-bodies.sh <pr>` prints them in one call:
 
 ```bash
 .claude/skills/ship-change/review-bodies.sh <pr>
 ```
 
 It prints every cubic and CodeRabbit review body with its `<details>` blocks
-kept, the summary comment, and every review thread with all of its comments, marking
+kept, the summary comments, and every review thread with all of its comments, marking
 the ones already resolved.
 
 `quiet` counts replies, not resolutions. Before reporting a PR as done, re-read
